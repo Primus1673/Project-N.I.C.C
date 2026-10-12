@@ -1,0 +1,90 @@
+;;----------LICENSE NOTICE-------------------------------------------------------------------------------------------------------;;
+;;  This file is part of GBTelera: A Gameboy Development Framework                                                               ;;
+;;  Copyright (C) 2024 ronaldo / Cheesetea / ByteRealms (@FranGallegoBR)                                                         ;;
+;;                                                                                                                               ;;
+;; Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation    ;;
+;; files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy,    ;;
+;; modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the         ;;
+;; Softwareis furnished to do so, subject to the following conditions:                                                           ;;
+;;                                                                                                                               ;;
+;; The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.;;
+;;                                                                                                                               ;;
+;; THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE          ;;
+;; WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR         ;;
+;; COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,   ;;
+;; ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                         ;;
+;;-------------------------------------------------------------------------------------------------------------------------------;;
+
+
+INCLUDE "constants.inc"
+
+DEF STACK_TOP EQU $E000      ;; La pila crece hacia abajo desde el final de la WRAM ($DFFF)
+
+SECTION "Entry point", ROM0[$150]
+
+main::
+   di                        ;; Sin interrupciones mientras inicializamos
+   ld   sp, STACK_TOP
+
+   ;;--------------------------------------
+   ;;-- Apagar la LCD (solo se puede apagar durante el VBlank)
+.waitVBlank:
+   ldh  a, [rLY]
+   cp   SCREEN_H
+   jr   c, .waitVBlank
+   xor  a
+   ldh  [rLCDC], a           ;; LCD apagada: ya podemos escribir libremente en VRAM
+
+   ;;--------------------------------------
+   ;;-- Preparar la VRAM
+   ;;   La BIOS deja basura (el logo de Nintendo) en los tiles y en el mapa de fondo: lo borramos todo.
+   ld   hl, _VRAM            ;; $8000-$97FF: datos de tiles
+   ld   bc, $1800
+   xor  a
+   call MemSet
+
+   ld   hl, _SCRN0           ;; $9800-$9BFF: mapa de fondo 0 (todo al tile 0, que esta vacio)
+   ld   bc, $0400
+   ld   a, TILE_BLANK
+   call MemSet
+
+   xor  a
+   ldh  [rSCX], a            ;; Sin scroll
+   ldh  [rSCY], a
+
+   call Sprites_LoadTiles
+
+   ;;--------------------------------------
+   ;;-- Paletas
+   ld   a, PALETTE_DEFAULT
+   ldh  [rBGP], a
+   ldh  [rOBP0], a
+   ldh  [rOBP1], a
+
+   ;;--------------------------------------
+   ;;-- Inicializar los modulos del juego
+   call Sprites_Init
+   call Input_Init
+   call Player_Init
+   call Player_Draw          ;; Para que el primer DMA ya lleve la nave en su sitio
+
+   ;;--------------------------------------
+   ;;-- Encender la LCD y activar la interrupcion de VBlank
+   ld   a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_OBJ8 | LCDCF_BG8000 | LCDCF_BG9800
+   ldh  [rLCDC], a
+
+   xor  a
+   ldh  [rIF], a             ;; Descartamos interrupciones pendientes
+   ld   a, IEF_VBLANK
+   ldh  [rIE], a
+   ei
+
+   ;;--------------------------------------
+   ;;-- Bucle principal: una vuelta por fotograma
+.mainLoop:
+   call WaitVBlank           ;; Dormimos hasta que empiece el VBlank
+   call hOAMDMA              ;; Lo primero en el VBlank: copiar los sprites a la OAM real
+   call Input_Read           ;; Leer el mando
+   call Player_Update        ;; Mover al jugador
+   call Player_Draw          ;; Actualizar su sprite en la OAM en sombra
+   jr   .mainLoop
