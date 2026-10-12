@@ -15,6 +15,11 @@
 ;; ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                         ;;
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
+;;-------------------------------------------------------------------------------------------------------------------------------;;
+;; main.asm : Punto de entrada, inicializacion y bucle principal del juego
+;;
+;; FASE 1: la nave del jugador aparece en pantalla y se mueve con la cruceta, dentro de un marco.
+;;-------------------------------------------------------------------------------------------------------------------------------;;
 
 INCLUDE "constants.inc"
 
@@ -47,6 +52,8 @@ main::
    ld   bc, $0400
    ld   a, TILE_BLANK
    call MemSet
+
+   call Border_Draw          ;; Dibuja el marco de la pantalla sobre el mapa limpio
 
    xor  a
    ldh  [rSCX], a            ;; Sin scroll

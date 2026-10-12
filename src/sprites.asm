@@ -48,7 +48,9 @@ Sprites_Init::
    ret
 
 ;;-----------------------------------------------------------------
-;; Sprites_LoadTiles: Copia los tiles de src/sprites/dron.z80 a la VRAM, a partir del tile TILE_PLAYER
+;; Sprites_LoadTiles: Copia todos los tiles del juego a la VRAM (sprites y fondo comparten los tiles de $8000):
+;;    - src/sprites/dron.z80  -> a partir del tile TILE_PLAYER (nave)
+;;    - src/sprites/borde.z80 -> a partir del tile TILE_BORDER (marco de la pantalla)
 ;;    El tile 0 (TILE_BLANK) no se copia: ya esta vacio porque main.asm borra la VRAM al arrancar.
 ;;    IMPORTANTE: solo llamar con la LCD apagada o durante el VBlank
 ;;    Destruye: A, BC, DE, HL
@@ -57,12 +59,21 @@ Sprites_LoadTiles::
    ld   hl, _VRAM + TILE_PLAYER * TILE_BYTES
    ld   bc, TileLabel.end - TileLabel
    call MemCopy
+
+   ld   de, BorderTiles
+   ld   hl, _VRAM + TILE_BORDER * TILE_BYTES
+   ld   bc, BorderTiles.end - BorderTiles
+   call MemCopy
    ret
 
 ;;-----------------------------------------------------------------
 ;; Datos de los tiles, exportados desde Game Boy Tile Designer (GBTD).
-;; Flujo de trabajo: editar src/sprites/dron.gbr en GBTD -> File > Export to... -> "dron.z80" en src/sprites/ -> make clean && make
-;; (make clean es necesario porque el Makefile no sabe que sprites.asm depende de este archivo)
-;; El archivo exportado define su propia SECTION "Tiles" y la etiqueta TileLabel, y debe ir al final de este fichero.
+;; Flujo de trabajo: editar el .gbr en GBTD -> File > Export to... -> el .z80 en src/sprites/ -> make clean && make
+;; (make clean es necesario porque el Makefile no sabe que sprites.asm depende de estos archivos)
+;; Cada archivo exportado define su propia SECTION y su etiqueta, y debe ir con su etiqueta ".end" justo detras.
+;; Las SECTION y las etiquetas de cada archivo deben tener nombres distintos (se configuran al exportar en GBTD).
 INCLUDE "sprites/dron.z80"
 TileLabel.end:
+
+INCLUDE "sprites/borde.z80"
+BorderTiles.end:
