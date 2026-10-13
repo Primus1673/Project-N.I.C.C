@@ -51,6 +51,7 @@ Sprites_Init::
 ;; Sprites_LoadTiles: Copia todos los tiles del juego a la VRAM (sprites y fondo comparten los tiles de $8000):
 ;;    - src/sprites/dron.z80  -> a partir del tile TILE_PLAYER (nave)
 ;;    - src/sprites/borde.z80 -> a partir del tile TILE_BORDER (marco de la pantalla)
+;;    - src/sprites/bala.z80  -> a partir del tile TILE_BULLET (balas)
 ;;    El tile 0 (TILE_BLANK) no se copia: ya esta vacio porque main.asm borra la VRAM al arrancar.
 ;;    IMPORTANTE: solo llamar con la LCD apagada o durante el VBlank
 ;;    Destruye: A, BC, DE, HL
@@ -63,6 +64,11 @@ Sprites_LoadTiles::
    ld   de, BorderTiles
    ld   hl, _VRAM + TILE_BORDER * TILE_BYTES
    ld   bc, BorderTiles.end - BorderTiles
+   call MemCopy
+
+   ld   de, BulletTiles
+   ld   hl, _VRAM + TILE_BULLET * TILE_BYTES
+   ld   bc, BulletTiles.end - BulletTiles
    call MemCopy
    ret
 
@@ -77,3 +83,6 @@ TileLabel.end:
 
 INCLUDE "sprites/borde.z80"
 BorderTiles.end:
+
+INCLUDE "sprites/bala.z80"
+BulletTiles.end:

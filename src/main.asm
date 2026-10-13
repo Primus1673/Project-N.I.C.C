@@ -19,6 +19,7 @@
 ;; main.asm : Punto de entrada, inicializacion y bucle principal del juego
 ;;
 ;; FASE 1: la nave del jugador aparece en pantalla y se mueve con la cruceta, dentro de un marco.
+;; FASE 2: disparos (A: arriba y abajo, B: izquierda y derecha).
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
 INCLUDE "constants.inc"
@@ -73,6 +74,7 @@ main::
    call Sprites_Init
    call Input_Init
    call Player_Init
+   call Bullets_Init
    call Player_Draw          ;; Para que el primer DMA ya lleve la nave en su sitio
 
    ;;--------------------------------------
@@ -93,5 +95,7 @@ main::
    call hOAMDMA              ;; Lo primero en el VBlank: copiar los sprites a la OAM real
    call Input_Read           ;; Leer el mando
    call Player_Update        ;; Mover al jugador
+   call Bullets_Update       ;; Disparar y mover las balas (despues del jugador: salen de su nueva posicion)
    call Player_Draw          ;; Actualizar su sprite en la OAM en sombra
+   call Bullets_Draw         ;; Y los de las balas
    jr   .mainLoop
