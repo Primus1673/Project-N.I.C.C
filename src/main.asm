@@ -20,6 +20,7 @@
 ;;
 ;; FASE 1: la nave del jugador aparece en pantalla y se mueve con la cruceta, dentro de un marco.
 ;; FASE 2: disparos (A: arriba y abajo, B: izquierda y derecha).
+;; FASE 3: enemigos (celulas infectadas de tipo 1).
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
 INCLUDE "constants.inc"
@@ -75,6 +76,8 @@ main::
    call Input_Init
    call Player_Init
    call Bullets_Init
+   call Random_Init
+   call Enemies_Init
    call Player_Draw          ;; Para que el primer DMA ya lleve la nave en su sitio
 
    ;;--------------------------------------
@@ -96,6 +99,8 @@ main::
    call Input_Read           ;; Leer el mando
    call Player_Update        ;; Mover al jugador
    call Bullets_Update       ;; Disparar y mover las balas (despues del jugador: salen de su nueva posicion)
+   call Enemies_Update       ;; Enemigos: aparecer, moverse y chocar con las balas (despues de mover las balas)
    call Player_Draw          ;; Actualizar su sprite en la OAM en sombra
    call Bullets_Draw         ;; Y los de las balas
+   call Enemies_Draw         ;; Y los de los enemigos
    jr   .mainLoop

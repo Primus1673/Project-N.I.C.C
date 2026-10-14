@@ -29,6 +29,8 @@ DEF PLAY_MIN_X     EQU BORDER_SIZE
 DEF PLAY_MAX_X     EQU SCREEN_W - BORDER_SIZE - TILE_SIZE
 DEF PLAY_MIN_Y     EQU BORDER_SIZE
 DEF PLAY_MAX_Y     EQU SCREEN_H - BORDER_SIZE - TILE_SIZE
+DEF PLAY_RANGE_X   EQU PLAY_MAX_X - PLAY_MIN_X + 1   ;; Cuantos valores distintos puede tomar X (137)
+DEF PLAY_RANGE_Y   EQU PLAY_MAX_Y - PLAY_MIN_Y + 1   ;; Cuantos valores distintos puede tomar Y (121)
 
 ;;--------------------------------------
 ;;-- OAM (sprites)
@@ -43,6 +45,7 @@ DEF OAM_SIZE       EQU OAM_ENTRY_SIZE * MAX_SPRITES
 ;;    Reparto de los sprites (un sprite con numero menor se dibuja ENCIMA de uno con numero mayor)
 DEF SPR_SLOT_PLAYER  EQU 0                          ;; 1 sprite: la nave
 DEF SPR_SLOT_BULLETS EQU 1                          ;; MAX_BULLETS sprites: las balas
+;;    (el sprite SPR_SLOT_ENEMIES, con los enemigos, se define mas abajo en la seccion de enemigos)
 
 ;;--------------------------------------
 ;;-- Indices de tiles (se cargan en VRAM a partir de $8000)
@@ -51,6 +54,7 @@ DEF TILE_BLANK     EQU 0   ;; Tile vacio (fondo). Es el tile 0: la VRAM se borra
 DEF TILE_PLAYER    EQU 1   ;; Nave del jugador: primer tile de src/sprites/dron.z80
 DEF TILE_BORDER    EQU 2   ;; Borde del marco: primer tile de src/sprites/borde.z80
 DEF TILE_BULLET    EQU 3   ;; Bala: primer tile de src/sprites/bala.z80
+DEF TILE_ENEMY1    EQU 4   ;; Celula infectada (tipo 1): primer tile de src/sprites/celula.z80
 
 ;;--------------------------------------
 ;;-- Paleta (4 tonos: %DDCCBBAA con AA=color 0 ... DD=color 3; 0=blanco ... 3=negro)
@@ -81,6 +85,14 @@ DEF PLAYER_START_Y EQU (SCREEN_H - TILE_SIZE) / 2
 
 
 ;;--------------------------------------
+;;-- Direcciones de movimiento (las usan balas y enemigos)
+DEF DIR_NONE       EQU 0
+DEF DIR_UP         EQU 1
+DEF DIR_DOWN       EQU 2
+DEF DIR_LEFT       EQU 3
+DEF DIR_RIGHT      EQU 4
+
+;;--------------------------------------
 ;;-- Disparos
 ;;    El boton A dispara hacia ARRIBA y hacia ABAJO a la vez; el boton B hacia la IZQUIERDA y la DERECHA a la vez.
 ;;    Cada boton tiene su propia recarga. Cada bala es un sprite de 8x8 que avanza en linea recta.
@@ -90,10 +102,30 @@ DEF SHOT_COOLDOWN  EQU 60  ;; Fotogramas de recarga por boton (60 fotogramas = 1
 
 ;;    Cada bala ocupa BULLET_SIZE bytes en RAM: [direccion, X, Y]
 DEF BULLET_SIZE    EQU 3
-DEF BULLET_NONE    EQU 0   ;; Direccion 0 = hueco libre (bala inexistente)
-DEF BULLET_UP      EQU 1
-DEF BULLET_DOWN    EQU 2
-DEF BULLET_LEFT    EQU 3
-DEF BULLET_RIGHT   EQU 4
+DEF BULLET_NONE    EQU DIR_NONE    ;; Direccion 0 = hueco libre (bala inexistente)
+DEF BULLET_UP      EQU DIR_UP
+DEF BULLET_DOWN    EQU DIR_DOWN
+DEF BULLET_LEFT    EQU DIR_LEFT
+DEF BULLET_RIGHT   EQU DIR_RIGHT
+
+
+;;--------------------------------------
+;;-- Enemigos (celulas infectadas)
+;;    Cada enemigo ocupa ENEMY_SIZE bytes en RAM: [tipo, direccion, X, Y, vida]. Tipo 0 = hueco libre.
+DEF MAX_ENEMIES    EQU 8   ;; Enemigos que pueden existir a la vez
+DEF SPR_SLOT_ENEMIES EQU SPR_SLOT_BULLETS + MAX_BULLETS ;; Sprites de OAM de los enemigos (de momento 1 sprite cada uno)
+DEF ENEMY_SIZE     EQU 5
+DEF ENEMY_NONE     EQU 0   ;; Tipo 0 = hueco libre
+DEF ENEMY_NORMAL   EQU 1   ;; Celula infectada (tipo 1): 1x1 tile, 1 disparo
+DEF ENEMY_NORMAL_HP     EQU 1
+DEF ENEMY_NORMAL_MASK   EQU %00000001   ;; Se mueve 1 pixel cada 2 fotogramas (30 px/s). Mascara 0 = cada fotograma,
+                                        ;; %1 = cada 2, %11 = cada 4... (ver Enemies_Move)
+DEF ENEMY_SPAWN_FIRST   EQU 60          ;; Fotogramas hasta la primera aparicion
+DEF ENEMY_SPAWN_MIN     EQU 40          ;; Entre apariciones pasan MIN + (0..VAR-1) fotogramas: de 40 a 99 (0,7 a 1,7 s)
+DEF ENEMY_SPAWN_VAR     EQU 60
+
+;;    Colision: dos sprites chocan si la distancia en X y en Y es MENOR que COLLISION_DIST (en pixeles).
+;;    Con 6 la caja de colision es de 6x6 dentro del tile de 8x8 (un poco permisiva, queda mas justo al jugar).
+DEF COLLISION_DIST EQU 6
 
 ENDC
