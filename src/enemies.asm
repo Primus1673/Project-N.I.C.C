@@ -252,6 +252,8 @@ Enemies_CheckBullets:
    jr   nz, .nextBullet         ;; Aun le queda vida
    xor  a
    ld   [hl], a                 ;; Sin vida: el enemigo muere (tipo 0)
+   ld   a, ENEMY_NORMAL_POINTS
+   call Score_AddTens           ;; Puntos por matarlo (conserva BC, DE y HL)
    jr   .enemyDone              ;; Ya no hay que comprobar mas balas contra este enemigo
 .nextBullet:
    REPT BULLET_SIZE
@@ -267,6 +269,51 @@ Enemies_CheckBullets:
    ENDR
    dec  b
    jr   nz, .enemyLoop
+   ret
+
+;;-----------------------------------------------------------------
+;; Enemies_CheckPlayer: Si una celula toca al jugador, la celula desaparece (sin dar puntos) y el jugador pierde una vida.
+;;    No hace nada mientras el jugador es invulnerable (las celulas lo atraviesan). Como mucho una vida por fotograma.
+;;    Destruye: A, B, C, D, HL
+Enemies_CheckPlayer:
+   ld   a, [wInvuln]
+   and  a
+   ret  nz                      ;; Invulnerable
+   ld   hl, wEnemies
+   ld   d, MAX_ENEMIES
+.loop:
+   ld   a, [hl]                 ;; Tipo
+   and  a
+   jr   z, .next                ;; Hueco libre
+   push hl
+   inc  hl
+   inc  hl                      ;; HL -> X del enemigo
+   ld   a, [wPlayerX]
+   ld   b, a
+   ld   a, [hl+]                ;; A = X del enemigo (HL -> Y)
+   sub  b
+   AbsA
+   cp   COLLISION_DIST
+   jr   nc, .far                ;; Lejos en X
+   ld   a, [wPlayerY]
+   ld   b, a
+   ld   a, [hl]
+   sub  b
+   AbsA
+   cp   COLLISION_DIST
+   jr   nc, .far                ;; Lejos en Y
+   pop  hl                      ;; --- Choque ---
+   xor  a
+   ld   [hl], a                 ;; La celula desaparece
+   jp   Game_PlayerHit          ;; Pierde una vida (y vuelve de aqui con su ret)
+.far:
+   pop  hl
+.next:
+   REPT ENEMY_SIZE
+      inc  hl
+   ENDR
+   dec  d
+   jr   nz, .loop
    ret
 
 ;;-----------------------------------------------------------------
@@ -288,6 +335,7 @@ Enemies_Update::
 
    call Enemies_Move
    call Enemies_CheckBullets
+   call Enemies_CheckPlayer
    ret
 
 ;;-----------------------------------------------------------------

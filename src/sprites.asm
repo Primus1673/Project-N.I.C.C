@@ -53,6 +53,7 @@ Sprites_Init::
 ;;    - src/sprites/borde.z80 -> a partir del tile TILE_BORDER (marco de la pantalla)
 ;;    - src/sprites/bala.z80  -> a partir del tile TILE_BULLET (balas)
 ;;    - src/sprites/celula.z80 -> a partir del tile TILE_ENEMY1 (celula infectada)
+;;    - src/sprites/hud.z80   -> a partir del tile TILE_HUD (digitos 0-9, corazon lleno y corazon vacio)
 ;;    El tile 0 (TILE_BLANK) no se copia: ya esta vacio porque main.asm borra la VRAM al arrancar.
 ;;    IMPORTANTE: solo llamar con la LCD apagada o durante el VBlank
 ;;    Destruye: A, BC, DE, HL
@@ -76,6 +77,11 @@ Sprites_LoadTiles::
    ld   hl, _VRAM + TILE_ENEMY1 * TILE_BYTES
    ld   bc, CellTiles.end - CellTiles
    call MemCopy
+
+   ld   de, HudTiles
+   ld   hl, _VRAM + TILE_HUD * TILE_BYTES
+   ld   bc, HudTiles.end - HudTiles
+   call MemCopy
    ret
 
 ;;-----------------------------------------------------------------
@@ -95,3 +101,6 @@ BulletTiles.end:
 
 INCLUDE "sprites/celula.z80"
 CellTiles.end:
+
+INCLUDE "sprites/hud.z80"
+HudTiles.end:

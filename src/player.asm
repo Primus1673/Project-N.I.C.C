@@ -84,8 +84,16 @@ Player_Update::
 ;;-----------------------------------------------------------------
 ;; Player_Draw: Escribe el sprite del jugador en la OAM en sombra (sprite numero 0)
 ;;    El DMA lo copiara a la OAM real en el proximo VBlank
+;;    - Con la partida perdida la nave desaparece.
+;;    - Durante la invulnerabilidad parpadea (oculta mientras el bit BLINK_MASK de wInvuln vale 1).
 ;;    Destruye: A, HL
 Player_Draw::
+   ld   a, [wGameState]
+   and  a
+   jr   nz, .hide            ;; Partida perdida
+   ld   a, [wInvuln]
+   and  BLINK_MASK
+   jr   nz, .hide            ;; Fase "apagada" del parpadeo
    ld   hl, wShadowOAM
    ld   a, [wPlayerY]
    add  OAM_Y_OFFSET
@@ -97,4 +105,12 @@ Player_Draw::
    ld   [hl+], a             ;; Byte 2: numero de tile
    xor  a
    ld   [hl], a              ;; Byte 3: atributos (paleta OBP0, sin volteos, delante del fondo)
+   ret
+.hide:
+   ld   hl, wShadowOAM
+   xor  a
+   ld   [hl+], a             ;; Y = 0: sprite oculto
+   ld   [hl+], a
+   ld   [hl+], a
+   ld   [hl], a
    ret

@@ -21,6 +21,7 @@
 ;; FASE 1: la nave del jugador aparece en pantalla y se mueve con la cruceta, dentro de un marco.
 ;; FASE 2: disparos (A: arriba y abajo, B: izquierda y derecha).
 ;; FASE 3: enemigos (celulas infectadas de tipo 1).
+;; FASE 4: vidas, invulnerabilidad, puntuacion y HUD; fin de partida y reinicio con START.
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
 INCLUDE "constants.inc"
@@ -74,10 +75,9 @@ main::
    ;;-- Inicializar los modulos del juego
    call Sprites_Init
    call Input_Init
-   call Player_Init
-   call Bullets_Init
    call Random_Init
-   call Enemies_Init
+   call Game_Start           ;; Partida nueva: jugador, balas, enemigos, vidas y puntuacion
+   call Hud_Update           ;; Dibuja el HUD ahora (LCD apagada: se puede escribir en VRAM)
    call Player_Draw          ;; Para que el primer DMA ya lleve la nave en su sitio
 
    ;;--------------------------------------
@@ -96,10 +96,9 @@ main::
 .mainLoop:
    call WaitVBlank           ;; Dormimos hasta que empiece el VBlank
    call hOAMDMA              ;; Lo primero en el VBlank: copiar los sprites a la OAM real
+   call Hud_Update           ;; Y, aun en el VBlank, redibujar el HUD si ha cambiado algo
    call Input_Read           ;; Leer el mando
-   call Player_Update        ;; Mover al jugador
-   call Bullets_Update       ;; Disparar y mover las balas (despues del jugador: salen de su nueva posicion)
-   call Enemies_Update       ;; Enemigos: aparecer, moverse y chocar con las balas (despues de mover las balas)
+   call Game_Update          ;; Jugador, balas, enemigos, choques y vidas (o, si se perdio, esperar a START)
    call Player_Draw          ;; Actualizar su sprite en la OAM en sombra
    call Bullets_Draw         ;; Y los de las balas
    call Enemies_Draw         ;; Y los de los enemigos

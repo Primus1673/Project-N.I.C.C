@@ -55,6 +55,10 @@ DEF TILE_PLAYER    EQU 1   ;; Nave del jugador: primer tile de src/sprites/dron.
 DEF TILE_BORDER    EQU 2   ;; Borde del marco: primer tile de src/sprites/borde.z80
 DEF TILE_BULLET    EQU 3   ;; Bala: primer tile de src/sprites/bala.z80
 DEF TILE_ENEMY1    EQU 4   ;; Celula infectada (tipo 1): primer tile de src/sprites/celula.z80
+DEF TILE_HUD       EQU 5   ;; Tiles del HUD: primer tile de src/sprites/hud.z80 (12 tiles: digitos 0-9, corazon lleno y vacio)
+DEF TILE_DIGIT0    EQU TILE_HUD          ;; Tile del digito 0 (el digito N es TILE_DIGIT0 + N)
+DEF TILE_HEART_FULL  EQU TILE_HUD + 10   ;; Corazon lleno (vida que se conserva)
+DEF TILE_HEART_EMPTY EQU TILE_HUD + 11   ;; Corazon vacio (vida perdida)
 
 ;;--------------------------------------
 ;;-- Paleta (4 tonos: %DDCCBBAA con AA=color 0 ... DD=color 3; 0=blanco ... 3=negro)
@@ -127,5 +131,21 @@ DEF ENEMY_SPAWN_VAR     EQU 60
 ;;    Colision: dos sprites chocan si la distancia en X y en Y es MENOR que COLLISION_DIST (en pixeles).
 ;;    Con 6 la caja de colision es de 6x6 dentro del tile de 8x8 (un poco permisiva, queda mas justo al jugar).
 DEF COLLISION_DIST EQU 6
+
+;;--------------------------------------
+;;-- Vidas, puntos y estado de la partida
+DEF PLAYER_LIVES   EQU 3     ;; Vidas al empezar
+DEF INVULN_FRAMES  EQU 120   ;; Invulnerabilidad tras un golpe: 120 fotogramas = 2 segundos
+DEF BLINK_MASK     EQU %00000100  ;; Parpadeo: la nave se oculta mientras este bit del contador de invulnerabilidad vale 1
+                                  ;; (4 fotogramas visible, 4 oculta)
+DEF STATE_PLAYING  EQU 0
+DEF STATE_GAMEOVER EQU 1
+DEF SCORE_DIGITS   EQU 5     ;; Puntuacion de 5 cifras decimales (maximo 99999, se satura)
+DEF ENEMY_NORMAL_POINTS EQU 1 ;; Puntos de la celula tipo 1, EN DECENAS (1 = 10 puntos)
+
+;;--------------------------------------
+;;-- HUD: ocupa la fila superior del marco (fila 0 del mapa de fondo)
+DEF HUD_HEARTS_COL EQU 1                                  ;; Columna del primer corazon (ocupan 3 columnas)
+DEF HUD_SCORE_COL  EQU SCREEN_TILES_W - 1 - SCORE_DIGITS  ;; Columna de la primera cifra (la ultima queda junto al marco derecho)
 
 ENDC
