@@ -22,6 +22,7 @@
 ;; FASE 2: disparos (A: arriba y abajo, B: izquierda y derecha).
 ;; FASE 3: enemigos (celulas infectadas de tipo 1).
 ;; FASE 4: vidas, invulnerabilidad, puntuacion y HUD; fin de partida y reinicio con START.
+;; FASE 5: la partida se divide en fases (niveles) de 1 minuto con dificultad creciente y pantalla de "FASE N" entre ellas.
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
 INCLUDE "constants.inc"
@@ -69,16 +70,18 @@ main::
    ld   a, PALETTE_DEFAULT
    ldh  [rBGP], a
    ldh  [rOBP0], a
-   ldh  [rOBP1], a
+   xor  a
+   ldh  [rOBP1], a           ;; OBP1 (la usa el texto): todo blanco, para escribir en blanco sobre la pantalla negra
 
    ;;--------------------------------------
    ;;-- Inicializar los modulos del juego
    call Sprites_Init
    call Input_Init
    call Random_Init
-   call Game_Start           ;; Partida nueva: jugador, balas, enemigos, vidas y puntuacion
+   call Game_Start           ;; Partida nueva: jugador, vidas, puntuacion y pantalla de "FASE 1"
    call Hud_Update           ;; Dibuja el HUD ahora (LCD apagada: se puede escribir en VRAM)
-   call Player_Draw          ;; Para que el primer DMA ya lleve la nave en su sitio
+   call Game_ApplyFade       ;; Paletas de arranque (la partida empieza con la pantalla en negro)
+   call Game_Draw            ;; Para que el primer DMA ya lleve los sprites en su sitio
 
    ;;--------------------------------------
    ;;-- Encender la LCD y activar la interrupcion de VBlank
@@ -97,9 +100,8 @@ main::
    call WaitVBlank           ;; Dormimos hasta que empiece el VBlank
    call hOAMDMA              ;; Lo primero en el VBlank: copiar los sprites a la OAM real
    call Hud_Update           ;; Y, aun en el VBlank, redibujar el HUD si ha cambiado algo
+   call Game_ApplyFade       ;; Y la paleta (los cambios de paleta tambien se hacen en el VBlank, si no se ve un corte)
    call Input_Read           ;; Leer el mando
-   call Game_Update          ;; Jugador, balas, enemigos, choques y vidas (o, si se perdio, esperar a START)
-   call Player_Draw          ;; Actualizar su sprite en la OAM en sombra
-   call Bullets_Draw         ;; Y los de las balas
-   call Enemies_Draw         ;; Y los de los enemigos
+   call Game_Update          ;; Estado de la partida: fases, jugador, balas, enemigos, choques y vidas
+   call Game_Draw            ;; Escribir todos los sprites en la OAM en sombra
    jr   .mainLoop

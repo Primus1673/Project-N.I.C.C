@@ -12,8 +12,12 @@ INCLUDE "constants.inc"
 SECTION "Enemies Variables", WRAM0
 
 wEnemies::     ds ENEMY_SIZE * MAX_ENEMIES   ;; Tabla de enemigos: [tipo, direccion, X, Y, vida] x MAX_ENEMIES
-wEnemyTick:    db                            ;; Contador de fotogramas (decide en cuales se mueven las celulas)
 wSpawnTimer:   db                            ;; Fotogramas que faltan para la proxima aparicion
+;;    Parametros de la fase actual (los carga Enemies_SetPhase desde PhaseTable)
+wMaxEnemies:   db                            ;; Maximo de celulas en pantalla a la vez
+wSpawnMin:     db                            ;; Entre apariciones pasan wSpawnMin + (0..wSpawnVar-1) fotogramas
+wSpawnVar:     db
+wMoveShift:    db                            ;; Patron de movimiento, rotado cada fotograma (ver Enemies_Move)
 
 SECTION "Enemies", ROM0
 
@@ -25,10 +29,70 @@ Enemies_Init::
    ld   bc, ENEMY_SIZE * MAX_ENEMIES
    xor  a
    call MemSet
-   xor  a
-   ld   [wEnemyTick], a
    ld   a, ENEMY_SPAWN_FIRST
    ld   [wSpawnTimer], a
+   ret
+
+;;-----------------------------------------------------------------
+;; Tabla de dificultad: una fila por fase. Cada fila: [maximo de celulas a la vez, espera minima entre apariciones,
+;;    variacion de la espera, patron de movimiento]. Entre apariciones pasan MIN + (0..VAR-1) fotogramas.
+;;    Patron de movimiento: 8 bits, uno por fotograma; la celula avanza 1 pixel en los fotogramas con bit a 1.
+;;    Velocidad = (bits a 1) / 8 pixeles por fotograma. Las balas van a 1 px/fotograma: la celula siempre es mas lenta.
+MACRO PhaseRow
+   ASSERT \1 <= MAX_ENEMIES
+   db \1, \2, \3, \4
+ENDM
+DEF PHASE_ROW_SIZE EQU 4
+PhaseTable:
+   ;;       max  min  var  patron       (velocidad)
+   PhaseRow   3, 100,  60, %00010001   ;; Fase 1: 2/8 = 15 px/s
+   PhaseRow   4,  80,  50, %00100101   ;; Fase 2: 3/8 = 22 px/s
+   PhaseRow   5,  60,  40, %01010101   ;; Fase 3: 4/8 = 30 px/s
+   PhaseRow   6,  45,  30, %01101101   ;; Fase 4: 5/8 = 37 px/s
+   PhaseRow   7,  30,  30, %11101110   ;; Fase 5: 6/8 = 45 px/s
+ASSERT (@ - PhaseTable) == PHASE_ROW_SIZE * PHASE_COUNT
+
+;;-----------------------------------------------------------------
+;; Enemies_SetPhase: Carga los parametros de dificultad de una fase
+;;    Entrada: A = fase (0 = la primera)
+;;    Destruye: A, DE, HL
+Enemies_SetPhase::
+   add  a
+   add  a                       ;; A * PHASE_ROW_SIZE (4)
+   ld   e, a
+   ld   d, 0
+   ld   hl, PhaseTable
+   add  hl, de
+   ld   a, [hl+]
+   ld   [wMaxEnemies], a
+   ld   a, [hl+]
+   ld   [wSpawnMin], a
+   ld   a, [hl+]
+   ld   [wSpawnVar], a
+   ld   a, [hl]
+   ld   [wMoveShift], a
+   ret
+
+;;-----------------------------------------------------------------
+;; Enemies_Count: Cuenta las celulas que hay en pantalla
+;;    Salida: A = numero de celulas
+;;    Destruye: A, B, C, HL
+Enemies_Count:
+   ld   hl, wEnemies
+   ld   b, MAX_ENEMIES
+   ld   c, 0
+.loop:
+   ld   a, [hl]
+   and  a
+   jr   z, .next
+   inc  c
+.next:
+   REPT ENEMY_SIZE
+      inc  hl
+   ENDR
+   dec  b
+   jr   nz, .loop
+   ld   a, c
    ret
 
 ;;-----------------------------------------------------------------
@@ -112,15 +176,14 @@ Enemies_Spawn:
    ret
 
 ;;-----------------------------------------------------------------
-;; Enemies_Move: Mueve las celulas 1 pixel en su direccion (solo en los fotogramas que toca segun ENEMY_NORMAL_MASK).
+;; Enemies_Move: Mueve las celulas 1 pixel en su direccion, solo en los fotogramas que toca segun el patron de la fase.
 ;;    Al salir de la zona de juego (llegar al lado contrario) desaparecen.
 ;;    Destruye: A, B, HL
 Enemies_Move:
-   ld   a, [wEnemyTick]
-   inc  a
-   ld   [wEnemyTick], a
-   and  ENEMY_NORMAL_MASK
-   ret  nz                      ;; En este fotograma las celulas no se mueven
+   ld   a, [wMoveShift]
+   rlca                         ;; El bit 7 pasa al carry y el patron gira (se repite cada 8 fotogramas)
+   ld   [wMoveShift], a
+   ret  nc                      ;; En este fotograma las celulas no se mueven
 
    ld   hl, wEnemies
    ld   b, MAX_ENEMIES
@@ -326,10 +389,20 @@ Enemies_Update::
    dec  a
    ld   [wSpawnTimer], a
    jr   nz, .noSpawn
+   call Enemies_Count           ;; Solo sale una celula si no se ha alcanzado el maximo de la fase
+   ld   b, a
+   ld   a, [wMaxEnemies]
+   cp   b
+   jr   c, .skipSpawn           ;; maximo < numero actual
+   jr   z, .skipSpawn           ;; maximo == numero actual
    call Enemies_Spawn
-   ld   b, ENEMY_SPAWN_VAR
+.skipSpawn:
+   ld   a, [wSpawnVar]
+   ld   b, a
    call Random_Range
-   add  ENEMY_SPAWN_MIN
+   ld   b, a
+   ld   a, [wSpawnMin]
+   add  b
    ld   [wSpawnTimer], a
 .noSpawn:
 

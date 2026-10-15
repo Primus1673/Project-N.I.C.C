@@ -59,6 +59,9 @@ DEF TILE_HUD       EQU 5   ;; Tiles del HUD: primer tile de src/sprites/hud.z80 
 DEF TILE_DIGIT0    EQU TILE_HUD          ;; Tile del digito 0 (el digito N es TILE_DIGIT0 + N)
 DEF TILE_HEART_FULL  EQU TILE_HUD + 10   ;; Corazon lleno (vida que se conserva)
 DEF TILE_HEART_EMPTY EQU TILE_HUD + 11   ;; Corazon vacio (vida perdida)
+DEF TILE_FONT      EQU 17  ;; Fuente de texto para SPRITES: primer tile de src/sprites/font.z80 (36 tiles)
+DEF TILE_FONT_DIGIT0 EQU TILE_FONT        ;; Digito N = TILE_FONT_DIGIT0 + N
+DEF TILE_FONT_A    EQU TILE_FONT + 10     ;; Letra A (la B es la siguiente...)
 
 ;;--------------------------------------
 ;;-- Paleta (4 tonos: %DDCCBBAA con AA=color 0 ... DD=color 3; 0=blanco ... 3=negro)
@@ -122,11 +125,8 @@ DEF ENEMY_SIZE     EQU 5
 DEF ENEMY_NONE     EQU 0   ;; Tipo 0 = hueco libre
 DEF ENEMY_NORMAL   EQU 1   ;; Celula infectada (tipo 1): 1x1 tile, 1 disparo
 DEF ENEMY_NORMAL_HP     EQU 1
-DEF ENEMY_NORMAL_MASK   EQU %00000001   ;; Se mueve 1 pixel cada 2 fotogramas (30 px/s). Mascara 0 = cada fotograma,
-                                        ;; %1 = cada 2, %11 = cada 4... (ver Enemies_Move)
-DEF ENEMY_SPAWN_FIRST   EQU 60          ;; Fotogramas hasta la primera aparicion
-DEF ENEMY_SPAWN_MIN     EQU 40          ;; Entre apariciones pasan MIN + (0..VAR-1) fotogramas: de 40 a 99 (0,7 a 1,7 s)
-DEF ENEMY_SPAWN_VAR     EQU 60
+DEF ENEMY_SPAWN_FIRST   EQU 60          ;; Fotogramas desde que empieza una fase hasta la primera aparicion
+;;    La velocidad, el maximo de celulas en pantalla y el ritmo de aparicion dependen de la fase: ver PhaseTable en enemies.asm
 
 ;;    Colision: dos sprites chocan si la distancia en X y en Y es MENOR que COLLISION_DIST (en pixeles).
 ;;    Con 6 la caja de colision es de 6x6 dentro del tile de 8x8 (un poco permisiva, queda mas justo al jugar).
@@ -138,8 +138,12 @@ DEF PLAYER_LIVES   EQU 3     ;; Vidas al empezar
 DEF INVULN_FRAMES  EQU 120   ;; Invulnerabilidad tras un golpe: 120 fotogramas = 2 segundos
 DEF BLINK_MASK     EQU %00000100  ;; Parpadeo: la nave se oculta mientras este bit del contador de invulnerabilidad vale 1
                                   ;; (4 fotogramas visible, 4 oculta)
-DEF STATE_PLAYING  EQU 0
-DEF STATE_GAMEOVER EQU 1
+DEF STATE_PLAYING  EQU 0     ;; Jugando
+DEF STATE_GAMEOVER EQU 1     ;; Sin vidas: todo congelado, START reinicia
+DEF STATE_FADE_OUT EQU 2     ;; Fin de fase: la pantalla se oscurece hasta el negro
+DEF STATE_INTRO    EQU 3     ;; Pantalla negra con el texto "FASE N"
+DEF STATE_FADE_IN  EQU 4     ;; La pantalla vuelve a aclararse y empieza la fase
+DEF STATE_FINISHED EQU 5     ;; Superadas todas las fases (de momento: pantalla negra con "FIN"; START reinicia)
 DEF SCORE_DIGITS   EQU 5     ;; Puntuacion de 5 cifras decimales (maximo 99999, se satura)
 DEF ENEMY_NORMAL_POINTS EQU 1 ;; Puntos de la celula tipo 1, EN DECENAS (1 = 10 puntos)
 
@@ -147,5 +151,19 @@ DEF ENEMY_NORMAL_POINTS EQU 1 ;; Puntos de la celula tipo 1, EN DECENAS (1 = 10 
 ;;-- HUD: ocupa la fila superior del marco (fila 0 del mapa de fondo)
 DEF HUD_HEARTS_COL EQU 1                                  ;; Columna del primer corazon (ocupan 3 columnas)
 DEF HUD_SCORE_COL  EQU SCREEN_TILES_W - 1 - SCORE_DIGITS  ;; Columna de la primera cifra (la ultima queda junto al marco derecho)
+
+;;--------------------------------------
+;;-- Fases (niveles). La partida dura PHASE_COUNT fases de PHASE_FRAMES fotogramas cada una
+DEF PHASE_COUNT    EQU 5
+DEF PHASE_FRAMES   EQU 3600  ;; 60 fotogramas/s * 60 s = 1 minuto por fase (la Game Boy real va a 59,7 fps: 60,3 s)
+DEF INTRO_FRAMES   EQU 120   ;; Tiempo que se muestra el texto "FASE N" (2 s)
+DEF FADE_STEP_FRAMES EQU 6   ;; Cada escalon del oscurecimiento/aclarado dura 6 fotogramas (3 escalones = 18 fotogramas)
+DEF FADE_BLACK     EQU 3     ;; Nivel de oscurecimiento maximo (0 = normal ... 3 = negro)
+
+;;--------------------------------------
+;;-- Texto con sprites (fuente de src/sprites/font.z80), blanco sobre el fondo negro de las pantallas de texto
+DEF TEXT_END       EQU $FF   ;; Fin de cadena
+DEF TEXT_ATTR      EQU %00010000  ;; Atributos de los sprites de texto: paleta OBP1 (que main.asm deja en blanco)
+DEF TEXT_CENTER_Y  EQU (SCREEN_H - TILE_SIZE) / 2
 
 ENDC

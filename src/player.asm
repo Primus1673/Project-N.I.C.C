@@ -89,8 +89,8 @@ Player_Update::
 ;;    Destruye: A, HL
 Player_Draw::
    ld   a, [wGameState]
-   and  a
-   jr   nz, .hide            ;; Partida perdida
+   cp   STATE_GAMEOVER
+   jr   z, .hide             ;; Partida perdida
    ld   a, [wInvuln]
    and  BLINK_MASK
    jr   nz, .hide            ;; Fase "apagada" del parpadeo

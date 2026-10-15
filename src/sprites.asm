@@ -40,12 +40,16 @@ Sprites_Init::
    ld   bc, hOAMDMA.end - hOAMDMA
    call MemCopy
 
-   ;; Todos los sprites a 0: con Y=0 el sprite queda oculto fuera de la pantalla
+   ;; (sigue en Sprites_Clear)
+
+;;-----------------------------------------------------------------
+;; Sprites_Clear: Deja la OAM en sombra vacia (todos los sprites ocultos: con Y=0 quedan fuera de la pantalla)
+;;    Destruye: A, BC, D, HL
+Sprites_Clear::
    ld   hl, wShadowOAM
    ld   bc, OAM_SIZE
    xor  a
-   call MemSet
-   ret
+   jp   MemSet
 
 ;;-----------------------------------------------------------------
 ;; Sprites_LoadTiles: Copia todos los tiles del juego a la VRAM (sprites y fondo comparten los tiles de $8000):
@@ -54,6 +58,7 @@ Sprites_Init::
 ;;    - src/sprites/bala.z80  -> a partir del tile TILE_BULLET (balas)
 ;;    - src/sprites/celula.z80 -> a partir del tile TILE_ENEMY1 (celula infectada)
 ;;    - src/sprites/hud.z80   -> a partir del tile TILE_HUD (digitos 0-9, corazon lleno y corazon vacio)
+;;    - src/sprites/font.z80  -> a partir del tile TILE_FONT (fuente para texto con sprites: digitos 0-9 y letras A-Z)
 ;;    El tile 0 (TILE_BLANK) no se copia: ya esta vacio porque main.asm borra la VRAM al arrancar.
 ;;    IMPORTANTE: solo llamar con la LCD apagada o durante el VBlank
 ;;    Destruye: A, BC, DE, HL
@@ -82,6 +87,11 @@ Sprites_LoadTiles::
    ld   hl, _VRAM + TILE_HUD * TILE_BYTES
    ld   bc, HudTiles.end - HudTiles
    call MemCopy
+
+   ld   de, FontTiles
+   ld   hl, _VRAM + TILE_FONT * TILE_BYTES
+   ld   bc, FontTiles.end - FontTiles
+   call MemCopy
    ret
 
 ;;-----------------------------------------------------------------
@@ -104,3 +114,6 @@ CellTiles.end:
 
 INCLUDE "sprites/hud.z80"
 HudTiles.end:
+
+INCLUDE "sprites/font.z80"
+FontTiles.end:
