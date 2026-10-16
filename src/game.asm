@@ -35,6 +35,7 @@ Game_Start::
    ld   a, 1
    ld   [wHudDirty], a
    ld   [wPhase], a          ;; Fase 1
+   call Combo_Reset          ;; Sin cadena de bajas
    ;; sigue en Game_BeginPhase
 
 ;;-----------------------------------------------------------------
@@ -91,7 +92,7 @@ Game_Update::
    cp   STATE_INTRO
    jr   z, .intro
    cp   STATE_FADE_IN
-   jr   z, .fadeIn
+   jp   z, .fadeIn
    ;; GAMEOVER o FINISHED: esperar START
    ldh  a, [hInputNew]
    bit  BTNB_START, a
@@ -105,6 +106,7 @@ Game_Update::
    ld   a, [wGameState]
    cp   STATE_PLAYING
    ret  nz                   ;; Ha perdido la ultima vida en este fotograma
+   call Combo_Update         ;; Cuenta atras y parpadeo del combo (solo avanza aqui: se detiene en las transiciones de fase)
    ld   a, [wInvuln]
    and  a
    jr   z, .noInvuln
@@ -229,9 +231,10 @@ Game_Draw::
    jp   Text_DrawString
 
 ;;-----------------------------------------------------------------
-;; Game_PlayerHit: El jugador ha sido golpeado: pierde una vida y queda invulnerable; sin vidas, fin de la partida
+;; Game_PlayerHit: El jugador ha sido golpeado: pierde una vida, se rompe el combo y queda invulnerable; sin vidas, fin de la partida
 ;;    Destruye: A
 Game_PlayerHit::
+   call Combo_Reset          ;; Un golpe rompe la cadena de bajas
    ld   a, [wLives]
    dec  a
    ld   [wLives], a

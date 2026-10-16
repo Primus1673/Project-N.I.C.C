@@ -57,7 +57,7 @@ Sprites_Clear::
 ;;    - src/sprites/borde.z80 -> a partir del tile TILE_BORDER (marco de la pantalla)
 ;;    - src/sprites/bala.z80  -> a partir del tile TILE_BULLET (balas)
 ;;    - src/sprites/celula.z80 -> a partir del tile TILE_ENEMY1 (celula infectada)
-;;    - src/sprites/hud.z80   -> a partir del tile TILE_HUD (digitos 0-9, corazon lleno y corazon vacio)
+;;    - src/sprites/hud.z80   -> a partir del tile TILE_HUD (digitos 0-9, corazon lleno, corazon vacio y X del combo)
 ;;    - src/sprites/font.z80  -> a partir del tile TILE_FONT (fuente para texto con sprites: digitos 0-9 y letras A-Z)
 ;;    El tile 0 (TILE_BLANK) no se copia: ya esta vacio porque main.asm borra la VRAM al arrancar.
 ;;    IMPORTANTE: solo llamar con la LCD apagada o durante el VBlank

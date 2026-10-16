@@ -10,7 +10,7 @@
 ;   Compression          : None.
 ;   Counter              : None.
 ;   Tile size            : 8 x 8
-;   Tiles                : 0 to 11
+;   Tiles                : 0 to 12
 ;
 ;   Palette colors       : None.
 ;   SGB Palette          : None.
@@ -48,5 +48,5 @@ DB $FF,$FF,$93,$93,$01,$01,$01,$01
 DB $83,$83,$C7,$C7,$EF,$EF,$FF,$FF
 DB $FF,$FF,$FF,$93,$FF,$6D,$FF,$7D
 DB $FF,$BB,$FF,$D7,$FF,$EF,$FF,$FF
-
-; End of HUD.Z80
+DB $BB,$BB,$BB,$BB,$D7,$D7,$EF,$EF
+DB $D7,$D7,$BB,$BB,$BB,$BB,$FF,$FF

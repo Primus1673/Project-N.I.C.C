@@ -316,7 +316,7 @@ Enemies_CheckBullets:
    xor  a
    ld   [hl], a                 ;; Sin vida: el enemigo muere (tipo 0)
    ld   a, ENEMY_NORMAL_POINTS
-   call Score_AddTens           ;; Puntos por matarlo (conserva BC, DE y HL)
+   call Combo_Kill              ;; Cuenta la baja en el combo y suma los puntos con el multiplicador (conserva BC, DE y HL)
    jr   .enemyDone              ;; Ya no hay que comprobar mas balas contra este enemigo
 .nextBullet:
    REPT BULLET_SIZE

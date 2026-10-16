@@ -55,11 +55,12 @@ DEF TILE_PLAYER    EQU 1   ;; Nave del jugador: primer tile de src/sprites/dron.
 DEF TILE_BORDER    EQU 2   ;; Borde del marco: primer tile de src/sprites/borde.z80
 DEF TILE_BULLET    EQU 3   ;; Bala: primer tile de src/sprites/bala.z80
 DEF TILE_ENEMY1    EQU 4   ;; Celula infectada (tipo 1): primer tile de src/sprites/celula.z80
-DEF TILE_HUD       EQU 5   ;; Tiles del HUD: primer tile de src/sprites/hud.z80 (12 tiles: digitos 0-9, corazon lleno y vacio)
+DEF TILE_HUD       EQU 5   ;; Tiles del HUD: primer tile de src/sprites/hud.z80 (13 tiles: digitos 0-9, corazon lleno, corazon vacio y X)
 DEF TILE_DIGIT0    EQU TILE_HUD          ;; Tile del digito 0 (el digito N es TILE_DIGIT0 + N)
 DEF TILE_HEART_FULL  EQU TILE_HUD + 10   ;; Corazon lleno (vida que se conserva)
 DEF TILE_HEART_EMPTY EQU TILE_HUD + 11   ;; Corazon vacio (vida perdida)
-DEF TILE_FONT      EQU 17  ;; Fuente de texto para SPRITES: primer tile de src/sprites/font.z80 (36 tiles)
+DEF TILE_HUD_X     EQU TILE_HUD + 12     ;; Letra X del multiplicador de combo ("X3")
+DEF TILE_FONT      EQU 18  ;; Fuente de texto para SPRITES: primer tile de src/sprites/font.z80 (36 tiles)
 DEF TILE_FONT_DIGIT0 EQU TILE_FONT        ;; Digito N = TILE_FONT_DIGIT0 + N
 DEF TILE_FONT_A    EQU TILE_FONT + 10     ;; Letra A (la B es la siguiente...)
 
@@ -151,6 +152,18 @@ DEF ENEMY_NORMAL_POINTS EQU 1 ;; Puntos de la celula tipo 1, EN DECENAS (1 = 10 
 ;;-- HUD: ocupa la fila superior del marco (fila 0 del mapa de fondo)
 DEF HUD_HEARTS_COL EQU 1                                  ;; Columna del primer corazon (ocupan 3 columnas)
 DEF HUD_SCORE_COL  EQU SCREEN_TILES_W - 1 - SCORE_DIGITS  ;; Columna de la primera cifra (la ultima queda junto al marco derecho)
+DEF HUD_COMBO_COL  EQU 9                                  ;; Columna de la "X" del multiplicador (la cifra va en la siguiente)
+
+;;--------------------------------------
+;;-- Combo: bajas seguidas con multiplicador de puntos
+;;    Cada baja a tiro suma 1 a la cadena y reinicia la cuenta atras de COMBO_FRAMES. La cadena se rompe al acabarse la
+;;    cuenta atras o al recibir un golpe. Multiplicador = 1 + (bajas / COMBO_STEP), con tope COMBO_MAX_MULT.
+;;    La cuenta atras solo avanza mientras se juega (se detiene en las pantallas de "FASE N" y de fin).
+DEF COMBO_FRAMES      EQU 420  ;; 7 segundos
+DEF COMBO_STEP        EQU 3    ;; Bajas seguidas para subir un escalon del multiplicador (x2 con 3, x3 con 6...)
+DEF COMBO_MAX_MULT    EQU 5    ;; Tope del multiplicador (ver el calculo del maximo de puntos en la conversacion: no desborda 99999)
+DEF COMBO_WARN_FRAMES EQU 180  ;; Cuando quedan menos de estos fotogramas (3 s), el "X3" parpadea, cada vez mas rapido
+DEF COMBO_BLINK_MIN   EQU 2    ;; Semiperiodo minimo del parpadeo (fotogramas)
 
 ;;--------------------------------------
 ;;-- Fases (niveles). La partida dura PHASE_COUNT fases de PHASE_FRAMES fotogramas cada una

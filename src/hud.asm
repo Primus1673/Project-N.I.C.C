@@ -1,7 +1,8 @@
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 ;; hud.asm : HUD (vidas y puntuacion) dibujado con tiles del fondo en la fila superior del marco
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
-;; Corazones a la izquierda (uno por vida posible: llenos = vidas que quedan) y 5 cifras de puntuacion a la derecha.
+;; Corazones a la izquierda (uno por vida posible: llenos = vidas que quedan), el multiplicador de combo ("X3") en el centro
+;; y 5 cifras de puntuacion a la derecha.
 ;; Solo se escribe en la VRAM cuando algo ha cambiado (wHudDirty), y siempre al empezar el VBlank (o con la LCD apagada).
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
@@ -37,6 +38,27 @@ Hud_Update::
    ld   [hl+], a
    dec  b
    jr   nz, .heart
+
+   ;;--------------------------------------
+   ;;-- Multiplicador de combo ("X3"): solo con x2 o mas y en la fase visible del parpadeo; si no, se restaura el marco
+   ld   hl, _SCRN0 + HUD_COMBO_COL
+   ld   a, [wMult]
+   cp   2
+   jr   c, .noCombo
+   ld   a, [wComboShow]
+   and  a
+   jr   z, .noCombo
+   ld   a, TILE_HUD_X
+   ld   [hl+], a
+   ld   a, [wMult]
+   add  TILE_DIGIT0
+   ld   [hl], a
+   jr   .comboDone
+.noCombo:
+   ld   a, TILE_BORDER
+   ld   [hl+], a
+   ld   [hl], a
+.comboDone:
 
    ;;--------------------------------------
    ;;-- Puntuacion: una cifra por tile
