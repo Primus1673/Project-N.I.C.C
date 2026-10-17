@@ -23,6 +23,8 @@
 ;; FASE 3: enemigos (celulas infectadas de tipo 1).
 ;; FASE 4: vidas, invulnerabilidad, puntuacion y HUD; fin de partida y reinicio con START.
 ;; FASE 5: la partida se divide en fases (niveles) de 1 minuto con dificultad creciente y pantalla de "FASE N" entre ellas.
+;; FASE 6: combo de bajas con multiplicador.
+;; FASE 7: pantalla de puntuacion final con bonus por fases superadas y corazones que quedan.
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
 INCLUDE "constants.inc"
@@ -52,8 +54,8 @@ main::
    xor  a
    call MemSet
 
-   ld   hl, _SCRN0           ;; $9800-$9BFF: mapa de fondo 0 (todo al tile 0, que esta vacio)
-   ld   bc, $0400
+   ld   hl, _SCRN0           ;; $9800-$9FFF: los dos mapas de fondo (todo al tile 0, que esta vacio): el 0 es el del juego
+   ld   bc, $0800            ;; y el 1 ($9C00) el de la pantalla de puntuacion
    ld   a, TILE_BLANK
    call MemSet
 
@@ -100,6 +102,7 @@ main::
    call WaitVBlank           ;; Dormimos hasta que empiece el VBlank
    call hOAMDMA              ;; Lo primero en el VBlank: copiar los sprites a la OAM real
    call Hud_Update           ;; Y, aun en el VBlank, redibujar el HUD si ha cambiado algo
+   call Results_Blit         ;; Y la fila de la pantalla de puntuacion que este preparada (si la hay)
    call Game_ApplyFade       ;; Y la paleta (los cambios de paleta tambien se hacen en el VBlank, si no se ve un corte)
    call Input_Read           ;; Leer el mando
    call Game_Update          ;; Estado de la partida: fases, jugador, balas, enemigos, choques y vidas

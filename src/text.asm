@@ -28,7 +28,13 @@ SECTION "Text", ROM0
 ;;--------------------------------------
 ;;-- Cadenas (terminan en TEXT_END; el espacio es el tile 0, que no se dibuja)
 StrPhase:: db "FASE ", TEXT_END
-StrEnd::   db "FIN", TEXT_END
+StrWin::     db "VICTORIA", TEXT_END      ;; Pantalla de puntuacion (se dibujan en el fondo, ver results.asm)
+StrLose::    db "GAME OVER", TEXT_END
+StrPoints::  db "PUNTOS", TEXT_END
+StrPhases::  db "FASES", TEXT_END
+StrHearts::  db "CORAZONES", TEXT_END
+StrTotal::   db "TOTAL", TEXT_END
+StrPress::   db "PULSA START", TEXT_END
 
 ;;-----------------------------------------------------------------
 ;; Text_DrawChar: Escribe 1 caracter como sprite en la OAM en sombra

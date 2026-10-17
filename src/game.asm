@@ -16,6 +16,8 @@ wPhaseTimerLo: db               ;; Fotogramas que faltan para acabar la fase (16
 wPhaseTimerHi: db
 wFadeLevel:   db                ;; Oscurecimiento de la pantalla: 0 normal ... FADE_BLACK negro
 wStateTimer:  db                ;; Cuenta atras de los estados de transicion
+wEndKind::    db                ;; END_NONE, END_WIN (todas las fases superadas) o END_LOSE (sin vidas)
+wResultsView: db                ;; 1 = se muestra la pantalla de puntuacion (mapa de fondo 1 y paleta invertida)
 
 SECTION "Game", ROM0
 
@@ -24,6 +26,10 @@ SECTION "Game", ROM0
 ;;    Destruye: A, BC, DE, HL
 Game_Start::
    call Player_Init
+   call Results_Init
+   xor  a
+   ld   [wEndKind], a        ;; La partida sigue
+   ld   [wResultsView], a    ;; Se vuelve al mapa de fondo del juego
    ld   a, STATE_PLAYING
    ld   [wGameState], a
    ld   a, PLAYER_LIVES
@@ -80,24 +86,36 @@ Game_StepTimer:
 
 ;;-----------------------------------------------------------------
 ;; Game_Update: Un fotograma del estado de la partida (ver STATE_* en constants.inc):
-;;    JUGANDO -> (fin de fase) FADE_OUT -> INTRO ("FASE N") -> FADE_IN -> JUGANDO ... -> tras la ultima fase: FINISHED
-;;    Con GAMEOVER o FINISHED todo queda congelado y START empieza una partida nueva.
+;;    JUGANDO -> (fin de fase) FADE_OUT -> INTRO ("FASE N") -> FADE_IN -> JUGANDO ...
+;;    Sin vidas: GAMEOVER (congelado) -> FADE_OUT -> RESULTS. Tras la ultima fase: FADE_OUT -> RESULTS.
+;;    En RESULTS se cuenta la puntuacion final (results.asm) y START empieza una partida nueva.
 ;;    Destruye: A, BC, DE, HL
 Game_Update::
    ld   a, [wGameState]
    cp   STATE_PLAYING
    jr   z, .playing
    cp   STATE_FADE_OUT
-   jr   z, .fadeOut
+   jp   z, .fadeOut
    cp   STATE_INTRO
-   jr   z, .intro
+   jp   z, .intro
    cp   STATE_FADE_IN
    jp   z, .fadeIn
-   ;; GAMEOVER o FINISHED: esperar START
+   cp   STATE_GAMEOVER
+   jr   z, .gameOver
+   jp   Results_Update       ;; STATE_RESULTS
+
+.gameOver:                   ;; Todo congelado un momento (START lo salta) y luego fundido a la pantalla de puntuacion
+   ld   a, [wStateTimer]
+   dec  a
+   ld   [wStateTimer], a
+   jr   z, .endFade
    ldh  a, [hInputNew]
    bit  BTNB_START, a
    ret  z
-   jp   Game_Start
+.endFade:
+   ld   a, END_LOSE
+   ld   [wEndKind], a
+   jr   .startFade
 
 .playing:
    call Player_Update
@@ -126,6 +144,12 @@ Game_Update::
    or   l
    ret  nz
    ;; La fase ha terminado: empieza a oscurecerse la pantalla (todo queda congelado)
+   ld   a, [wPhase]
+   cp   PHASE_COUNT
+   jr   nz, .startFade
+   ld   a, END_WIN           ;; Era la ultima: despues del negro viene la pantalla de puntuacion
+   ld   [wEndKind], a
+.startFade:
    ld   a, STATE_FADE_OUT
    ld   [wGameState], a
    xor  a
@@ -142,15 +166,19 @@ Game_Update::
    ld   [wFadeLevel], a
    cp   FADE_BLACK
    ret  nz
+   ld   a, [wEndKind]
+   and  a
+   jr   nz, .toResults       ;; Fin de la partida (ganada o perdida)
    ld   a, [wPhase]
-   cp   PHASE_COUNT
-   jr   z, .finished
    inc  a
    ld   [wPhase], a
    jp   Game_BeginPhase      ;; Siguiente fase: pantalla negra con su texto
-.finished:
-   ld   a, STATE_FINISHED
+.toResults:
+   call Results_Begin        ;; Calcula bonus y prepara la animacion
+   ld   a, STATE_RESULTS
    ld   [wGameState], a
+   ld   a, 1
+   ld   [wResultsView], a    ;; Game_ApplyFade cambia al mapa de la puntuacion en el proximo VBlank
    jp   Sprites_Clear
 
 .intro:
@@ -178,9 +206,16 @@ Game_Update::
 
 ;;-----------------------------------------------------------------
 ;; Game_ApplyFade: Pone las paletas de fondo y sprites segun wFadeLevel (0 normal ... 3 negro)
+;;    Con la pantalla de puntuacion (wResultsView = 1): mapa de fondo 1 y paleta invertida.
 ;;    IMPORTANTE: llamar al principio del VBlank (o con la LCD apagada), si no se ve un corte en la pantalla
 ;;    Destruye: A, DE, HL
 Game_ApplyFade::
+   ld   a, [wResultsView]
+   and  a
+   jr   nz, .results
+   ldh  a, [rLCDC]
+   res  3, a                 ;; Bit 3 de LCDC = 0: el fondo usa el mapa 0 ($9800), el del juego
+   ldh  [rLCDC], a
    ld   a, [wFadeLevel]
    ld   e, a
    ld   d, 0
@@ -189,6 +224,18 @@ Game_ApplyFade::
    ld   a, [hl]
    ldh  [rBGP], a
    ldh  [rOBP0], a
+   ret
+.results:                    ;; Pantalla de puntuacion: mapa 1 ($9C00) y paleta invertida (tile 0 negro, letras blancas)
+   ldh  a, [rLCDC]
+   set  3, a                 ;; Bit 3 de LCDC = 1: el fondo usa el mapa 1
+   ldh  [rLCDC], a
+   ld   a, [wResStage]
+   and  a
+   ld   a, BGP_RESULTS       ;; (ld no toca los flags)
+   jr   nz, .resPalette
+   ld   a, %11111111         ;; Etapa 0: aun se estan borrando las filas del mapa (pueden tener texto viejo): pantalla negra
+.resPalette:
+   ldh  [rBGP], a
    ret
 
 FadePalettes:                ;; %DDCCBBAA (AA = color 0): cada escalon hace cada color un tono mas oscuro
@@ -199,14 +246,14 @@ FadePalettes:                ;; %DDCCBBAA (AA = color 0): cada escalon hace cada
 
 ;;-----------------------------------------------------------------
 ;; Game_Draw: Escribe los sprites de este fotograma en la OAM en sombra
-;;    Pantallas de texto (INTRO y FINISHED): solo el texto. Resto: nave, balas y enemigos.
+;;    INTRO: solo el texto "FASE N". RESULTS: ningun sprite (la puntuacion va en el fondo). Resto: nave, balas y enemigos.
 ;;    Destruye: A, BC, DE, HL
 Game_Draw::
    ld   a, [wGameState]
    cp   STATE_INTRO
    jr   z, .intro
-   cp   STATE_FINISHED
-   jr   z, .finished
+   cp   STATE_RESULTS
+   jp   z, Sprites_Clear     ;; La puntuacion se dibuja en el fondo: ningun sprite
    call Player_Draw
    call Bullets_Draw
    jp   Enemies_Draw
@@ -221,14 +268,6 @@ Game_Draw::
    ld   a, [wPhase]
    add  TILE_FONT_DIGIT0
    jp   Text_DrawChar
-
-.finished:                   ;; "FIN" centrado
-   call Sprites_Clear
-   ld   de, wShadowOAM
-   ld   hl, StrEnd
-   ld   b, (SCREEN_W - 3 * TILE_SIZE) / 2
-   ld   c, TEXT_CENTER_Y
-   jp   Text_DrawString
 
 ;;-----------------------------------------------------------------
 ;; Game_PlayerHit: El jugador ha sido golpeado: pierde una vida, se rompe el combo y queda invulnerable; sin vidas, fin de la partida
@@ -247,6 +286,8 @@ Game_PlayerHit::
    ld   [wInvuln], a
    ret
 .dead:
+   ld   a, GAMEOVER_FRAMES
+   ld   [wStateTimer], a     ;; Juego congelado un momento antes del fundido a la puntuacion
    ld   a, STATE_GAMEOVER
    ld   [wGameState], a
    ret

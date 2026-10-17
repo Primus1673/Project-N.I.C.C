@@ -140,11 +140,11 @@ DEF INVULN_FRAMES  EQU 120   ;; Invulnerabilidad tras un golpe: 120 fotogramas =
 DEF BLINK_MASK     EQU %00000100  ;; Parpadeo: la nave se oculta mientras este bit del contador de invulnerabilidad vale 1
                                   ;; (4 fotogramas visible, 4 oculta)
 DEF STATE_PLAYING  EQU 0     ;; Jugando
-DEF STATE_GAMEOVER EQU 1     ;; Sin vidas: todo congelado, START reinicia
+DEF STATE_GAMEOVER EQU 1     ;; Sin vidas: todo congelado GAMEOVER_FRAMES fotogramas (START lo salta) y luego fundido a la puntuacion
 DEF STATE_FADE_OUT EQU 2     ;; Fin de fase: la pantalla se oscurece hasta el negro
 DEF STATE_INTRO    EQU 3     ;; Pantalla negra con el texto "FASE N"
 DEF STATE_FADE_IN  EQU 4     ;; La pantalla vuelve a aclararse y empieza la fase
-DEF STATE_FINISHED EQU 5     ;; Superadas todas las fases (de momento: pantalla negra con "FIN"; START reinicia)
+DEF STATE_RESULTS  EQU 5     ;; Pantalla de puntuacion final (tras la ultima fase o tras perder). START reinicia
 DEF SCORE_DIGITS   EQU 5     ;; Puntuacion de 5 cifras decimales (maximo 99999, se satura)
 DEF ENEMY_NORMAL_POINTS EQU 1 ;; Puntos de la celula tipo 1, EN DECENAS (1 = 10 puntos)
 
@@ -178,5 +178,30 @@ DEF FADE_BLACK     EQU 3     ;; Nivel de oscurecimiento maximo (0 = normal ... 3
 DEF TEXT_END       EQU $FF   ;; Fin de cadena
 DEF TEXT_ATTR      EQU %00010000  ;; Atributos de los sprites de texto: paleta OBP1 (que main.asm deja en blanco)
 DEF TEXT_CENTER_Y  EQU (SCREEN_H - TILE_SIZE) / 2
+
+;;--------------------------------------
+;;-- Fin de partida y pantalla de puntuacion
+DEF GAMEOVER_FRAMES EQU 90   ;; Tras perder la ultima vida, el juego queda congelado 1,5 s antes del fundido
+DEF END_NONE       EQU 0     ;; wEndKind: la partida sigue
+DEF END_WIN        EQU 1     ;; ... se han superado todas las fases
+DEF END_LOSE       EQU 2     ;; ... se han perdido todas las vidas
+
+;;    Bonus finales (en MILES de puntos, para sumarlos a la puntuacion de 5 cifras). Se suman al total, que satura en 99999.
+DEF BONUS_PHASE_K  EQU 1     ;; Por cada fase superada: 1 mil = 1000 puntos
+DEF BONUS_HEART_K  EQU 10    ;; Por cada corazon que queda: 10 mil = 10000 puntos
+ASSERT PHASE_COUNT * BONUS_PHASE_K + PLAYER_LIVES * BONUS_HEART_K <= 99   ;; (limite de la rutina de bonus)
+
+;;    La pantalla de puntuacion se dibuja en el mapa de fondo 1 ($9C00), con tiles de la fuente (src/sprites/font.z80), y se
+;;    muestra cambiando el bit de seleccion de mapa de LCDC. Paleta invertida: el tile 0 se ve negro y las letras blancas.
+DEF BGP_RESULTS    EQU %00011011
+DEF RES_ROW_TITLE  EQU 3     ;; Fila (0-17) de cada linea
+DEF RES_ROW_POINTS EQU 6
+DEF RES_ROW_PHASES EQU 8
+DEF RES_ROW_HEARTS EQU 10
+DEF RES_ROW_TOTAL  EQU 13
+DEF RES_ROW_PRESS  EQU 16
+DEF RES_LABEL_COL  EQU 2     ;; Columna donde empieza cada etiqueta
+DEF RES_VALUE_COL  EQU 13    ;; Columna de la primera cifra de cada valor (5 cifras: columnas 13 a 17)
+DEF RES_WAIT       EQU 30    ;; Fotogramas entre una linea y la siguiente (0,5 s)
 
 ENDC
