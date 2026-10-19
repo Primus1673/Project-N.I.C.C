@@ -59,6 +59,7 @@ Sprites_Clear::
 ;;    - src/sprites/celula.z80 -> a partir del tile TILE_ENEMY1 (celula infectada)
 ;;    - src/sprites/hud.z80   -> a partir del tile TILE_HUD (digitos 0-9, corazon lleno, corazon vacio y X del combo)
 ;;    - src/sprites/font.z80  -> a partir del tile TILE_FONT (fuente para texto con sprites: digitos 0-9 y letras A-Z)
+;;    - src/sprites/celula_grande.z80 -> a partir del tile TILE_BIG3 (celula grande: 9 tiles a 3x3 y 4 tiles a 2x2)
 ;;    El tile 0 (TILE_BLANK) no se copia: ya esta vacio porque main.asm borra la VRAM al arrancar.
 ;;    IMPORTANTE: solo llamar con la LCD apagada o durante el VBlank
 ;;    Destruye: A, BC, DE, HL
@@ -92,6 +93,11 @@ Sprites_LoadTiles::
    ld   hl, _VRAM + TILE_FONT * TILE_BYTES
    ld   bc, FontTiles.end - FontTiles
    call MemCopy
+
+   ld   de, BigCellTiles
+   ld   hl, _VRAM + TILE_BIG3 * TILE_BYTES
+   ld   bc, BigCellTiles.end - BigCellTiles
+   call MemCopy
    ret
 
 ;;-----------------------------------------------------------------
@@ -117,3 +123,6 @@ HudTiles.end:
 
 INCLUDE "sprites/font.z80"
 FontTiles.end:
+
+INCLUDE "sprites/celula_grande.z80"
+BigCellTiles.end:

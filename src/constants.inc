@@ -60,7 +60,10 @@ DEF TILE_DIGIT0    EQU TILE_HUD          ;; Tile del digito 0 (el digito N es TI
 DEF TILE_HEART_FULL  EQU TILE_HUD + 10   ;; Corazon lleno (vida que se conserva)
 DEF TILE_HEART_EMPTY EQU TILE_HUD + 11   ;; Corazon vacio (vida perdida)
 DEF TILE_HUD_X     EQU TILE_HUD + 12     ;; Letra X del multiplicador de combo ("X3")
-DEF TILE_FONT      EQU 18  ;; Fuente de texto para SPRITES: primer tile de src/sprites/font.z80 (36 tiles)
+DEF TILE_FONT      EQU 18  ;; Fuente de texto para SPRITES: primer tile de src/sprites/font.z80 (36 tiles, hasta el 53)
+DEF TILE_BIG3      EQU 54  ;; Celula grande a 3x3: 9 tiles seguidos (por filas) de src/sprites/celula_grande.z80
+DEF TILE_BIG2      EQU 63  ;; Celula grande a 2x2: 4 tiles seguidos (por filas), a continuacion de los 9 anteriores
+
 DEF TILE_FONT_DIGIT0 EQU TILE_FONT        ;; Digito N = TILE_FONT_DIGIT0 + N
 DEF TILE_FONT_A    EQU TILE_FONT + 10     ;; Letra A (la B es la siguiente...)
 
@@ -126,12 +129,25 @@ DEF ENEMY_SIZE     EQU 5
 DEF ENEMY_NONE     EQU 0   ;; Tipo 0 = hueco libre
 DEF ENEMY_NORMAL   EQU 1   ;; Celula infectada (tipo 1): 1x1 tile, 1 disparo
 DEF ENEMY_NORMAL_HP     EQU 1
+DEF ENEMY_BIG      EQU 2   ;; Celula grande (tipo 2): 3 disparos; cada impacto la encoge (3x3 -> 2x2 -> 1x1) hasta destruirla
+DEF ENEMY_BIG_HP        EQU 3   ;; La vida de una celula es tambien su TAMAÑO en tiles (3, 2 o 1): ver Enemies_Draw
+DEF MAX_BIG        EQU 2   ;; Celulas grandes a la vez (ver el limite de sprites mas abajo)
+DEF BIG_OFFSET     EQU (ENEMY_BIG_HP - 1) * TILE_SIZE   ;; Lo que se estrecha su zona de aparicion: 16 pixeles
+
+;;    Limite de sprites: la OAM admite 40. Nave (1) + balas (MAX_BULLETS) + enemigos. Una celula grande a 3x3 gasta 9 sprites.
+ASSERT MAX_BIG * 9 + (MAX_ENEMIES - MAX_BIG) <= MAX_SPRITES - SPR_SLOT_ENEMIES
+
 DEF ENEMY_SPAWN_FIRST   EQU 60          ;; Fotogramas desde que empieza una fase hasta la primera aparicion
 ;;    La velocidad, el maximo de celulas en pantalla y el ritmo de aparicion dependen de la fase: ver PhaseTable en enemies.asm
 
 ;;    Colision: dos sprites chocan si la distancia en X y en Y es MENOR que COLLISION_DIST (en pixeles).
 ;;    Con 6 la caja de colision es de 6x6 dentro del tile de 8x8 (un poco permisiva, queda mas justo al jugar).
 DEF COLLISION_DIST EQU 6
+;;    Para celulas de varios tiles (el tamaño en pixeles es 8 * vida): la caja de la celula se alarga por la derecha/abajo.
+;;    Un sprite de 8x8 en (x,y) choca con una celula en (ex,ey) de tamaño S si  -BIAS <= x-ex < S + EXTRA  (igual en Y):
+;;    para S=8 es el mismo rango de antes (-5 a 5). Se comprueba como (x-ex+BIAS) < 8*vida + EXTRA, sin signo.
+DEF COLLIDE_BIAS   EQU COLLISION_DIST - 1
+DEF COLLIDE_EXTRA  EQU 2 * COLLISION_DIST - 9
 
 ;;--------------------------------------
 ;;-- Vidas, puntos y estado de la partida
@@ -147,6 +163,7 @@ DEF STATE_FADE_IN  EQU 4     ;; La pantalla vuelve a aclararse y empieza la fase
 DEF STATE_RESULTS  EQU 5     ;; Pantalla de puntuacion final (tras la ultima fase o tras perder). START reinicia
 DEF SCORE_DIGITS   EQU 5     ;; Puntuacion de 5 cifras decimales (maximo 99999, se satura)
 DEF ENEMY_NORMAL_POINTS EQU 1 ;; Puntos de la celula tipo 1, EN DECENAS (1 = 10 puntos)
+DEF ENEMY_BIG_POINTS    EQU 5 ;; Puntos de la celula grande, en decenas (50 puntos)
 
 ;;--------------------------------------
 ;;-- HUD: ocupa la fila superior del marco (fila 0 del mapa de fondo)
