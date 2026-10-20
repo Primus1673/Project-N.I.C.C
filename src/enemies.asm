@@ -1,10 +1,13 @@
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 ;; enemies.asm : Enemigos del juego (celulas infectadas)
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
-;;   Hay dos tipos de celula:
+;;   Hay tres tipos de celula:
 ;;     - Normal (ENEMY_NORMAL): 1x1 tile, muere de 1 disparo, 10 puntos.
 ;;     - Grande (ENEMY_BIG): empieza a 3x3 tiles y necesita 3 disparos; cada impacto la encoge (3x3 -> 2x2 -> 1x1) manteniendo
 ;;       su centro. Se mueve mas despacio que la normal. 50 puntos. Como mucho MAX_BIG a la vez (por el limite de sprites).
+;;     - Agresiva (ENEMY_AGGR): empieza a 2x2 y necesita 2 disparos (el primero la encoge a 1x1, con dibujo propio). No va en
+;;       linea recta: persigue al jugador en tiempo real (fila y columna) hasta chocar con el o ser destruida. Va a el AGGR_SPEED_PCT % de la
+;;       velocidad de la celula normal de la fase. 30 puntos. Como mucho MAX_AGGR a la vez.
 ;;   - Aparecen pegadas a la cara INTERIOR del marco, por un lado elegido al azar y en una posicion al azar de ese lado.
 ;;   - Se mueven en linea recta hasta el lado contrario de la zona de juego, donde desaparecen.
 ;;   - Hay un conjunto fijo de MAX_ENEMIES enemigos. Cada uno es [tipo, direccion, X, Y, vida]; tipo 0 = hueco libre.
@@ -26,6 +29,14 @@ wSpawnVar:     db
 wMoveShift:    db                            ;; Patron de movimiento de la celula normal, rotado cada fotograma (ver Enemies_Move)
 wBigPercent:   db                            ;; Probabilidad (0-100) de que una aparicion sea una celula grande
 wMoveShiftBig: db                            ;; Patron de movimiento de la celula grande
+wAggrPercent:  db                            ;; Probabilidad (0-100) de que una aparicion sea una celula agresiva
+wSpawnRoll:    db                            ;; Tirada (0-99) con la que se elige el tipo de la proxima celula
+wAggrAcc:      db                            ;; Acumulador (0-99) que reparte los pasos de la agresiva: se mueve el AGGR_SPEED_PCT % de los pasos de la normal
+wChDX:         db                            ;; Persecucion: distancia en X hasta el jugador (valor absoluto)
+wChDY:         db                            ;; ... distancia en Y
+wChDirX:       db                            ;; ... DIR_LEFT o DIR_RIGHT
+wChDirY:       db                            ;; ... DIR_UP o DIR_DOWN
+wDrawType:     db                            ;; Enemies_Draw: tipo de la celula actual
 ;;    Variables de trabajo
 wMoveNow:      db                            ;; Bit 1: las celulas normales se mueven en este fotograma; bit 0: las grandes
 wSpawnType:    db                            ;; Tipo de la celula que se esta creando
@@ -52,23 +63,24 @@ Enemies_Init::
 ;;-----------------------------------------------------------------
 ;; Tabla de dificultad: una fila por fase. Cada fila:
 ;;    [maximo de celulas a la vez, espera minima entre apariciones, variacion de la espera, patron de movimiento de la celula
-;;     normal, % de apariciones que son celula grande, patron de movimiento de la celula grande]
+;;     normal, % de apariciones que son celula grande, patron de movimiento de la celula grande, % que son celula agresiva]
+;;    El resto de apariciones son celulas normales.
 ;;    Entre apariciones pasan MIN + (0..VAR-1) fotogramas.
 ;;    Patron de movimiento: 8 bits, uno por fotograma; la celula avanza 1 pixel en los fotogramas con bit a 1.
 ;;    Velocidad = (bits a 1) / 8 pixeles por fotograma. Las balas van a 1 px/fotograma: las celulas siempre son mas lentas.
 MACRO PhaseRow
    ASSERT \1 <= MAX_ENEMIES
-   ASSERT \5 <= 100
-   db \1, \2, \3, \4, \5, \6
+   ASSERT \5 + \7 <= 100
+   db \1, \2, \3, \4, \5, \6, \7
 ENDM
-DEF PHASE_ROW_SIZE EQU 6
+DEF PHASE_ROW_SIZE EQU 7
 PhaseTable:
-   ;;       max  min  var  normal         %grande  grande
-   PhaseRow   3, 100,  60, %00010001,       0, %00010000   ;; Fase 1: normal 2/8 = 15 px/s   (sin grandes)
-   PhaseRow   4,  80,  50, %00100101,      20, %00010000   ;; Fase 2: normal 3/8 = 22 px/s   grande 1/8 =  7 px/s
-   PhaseRow   5,  60,  40, %01010101,      25, %00010001   ;; Fase 3: normal 4/8 = 30 px/s   grande 2/8 = 15 px/s
-   PhaseRow   6,  45,  30, %01101101,      30, %00010001   ;; Fase 4: normal 5/8 = 37 px/s   grande 2/8 = 15 px/s
-   PhaseRow   7,  30,  30, %11101110,      35, %00100101   ;; Fase 5: normal 6/8 = 45 px/s   grande 3/8 = 22 px/s
+   ;;       max  min  var  normal         %grande  grande      %agresiva
+   PhaseRow   3, 100,  60, %00010001,       0, %00010000,   0   ;; Fase 1: normal 2/8 = 15 px/s   (sin grandes ni agresivas)
+   PhaseRow   4,  80,  50, %00100101,      20, %00010000,   0   ;; Fase 2: normal 3/8 = 22 px/s   grande 1/8 =  7 px/s
+   PhaseRow   5,  60,  40, %01010101,      25, %00010001,  15   ;; Fase 3: normal 4/8 = 30 px/s   grande 2/8 = 15 px/s
+   PhaseRow   6,  45,  30, %01101101,      30, %00010001,  20   ;; Fase 4: normal 5/8 = 37 px/s   grande 2/8 = 15 px/s
+   PhaseRow   7,  30,  30, %11101110,      35, %00100101,  25   ;; Fase 5: normal 6/8 = 45 px/s   grande 3/8 = 22 px/s
 ASSERT (@ - PhaseTable) == PHASE_ROW_SIZE * PHASE_COUNT
 
 ;;-----------------------------------------------------------------
@@ -77,11 +89,12 @@ ASSERT (@ - PhaseTable) == PHASE_ROW_SIZE * PHASE_COUNT
 ;;    Destruye: A, DE, HL
 Enemies_SetPhase::
    ld   e, a
-   add  a                       ;; 2n
-   add  e                       ;; 3n
-   add  a                       ;; 6n = n * PHASE_ROW_SIZE
-   ld   e, a
    ld   d, 0
+   add  a
+   add  a
+   add  a                       ;; 8n
+   sub  e                       ;; 7n = n * PHASE_ROW_SIZE (la fase maxima es 4: cabe en 8 bits)
+   ld   e, a
    ld   hl, PhaseTable
    add  hl, de
    ld   a, [hl+]
@@ -94,8 +107,10 @@ Enemies_SetPhase::
    ld   [wMoveShift], a
    ld   a, [hl+]
    ld   [wBigPercent], a
-   ld   a, [hl]
+   ld   a, [hl+]
    ld   [wMoveShiftBig], a
+   ld   a, [hl]
+   ld   [wAggrPercent], a
    ret
 
 ;;-----------------------------------------------------------------
@@ -169,27 +184,44 @@ Random_PlayY:
    ret
 
 ;;-----------------------------------------------------------------
-;; Enemies_ChooseType: Decide si la proxima celula es normal o grande (segun el % de la fase y el maximo de grandes)
-;;    Salida: A = tipo; wSpawnOff queda en 0 o BIG_OFFSET
+;; Enemies_ChooseType: Decide el tipo de la proxima celula con una tirada 0..99: [0, %grande) grande, despues [%agresiva)
+;;    agresiva, y el resto normal. Si ya hay el maximo de ese tipo, sale una normal.
+;;    Salida: A = tipo; wSpawnOff queda en 0, BIG_OFFSET o AGGR_OFFSET
 ;;    Destruye: A, B, C, D, HL
 Enemies_ChooseType:
-   ld   a, [wBigPercent]
-   and  a
-   jr   z, .normal              ;; Esta fase no tiene celulas grandes
-   ld   b, ENEMY_BIG
-   call Enemies_CountType
-   cp   MAX_BIG
-   jr   nc, .normal             ;; Ya hay el maximo de grandes
    ld   b, 100
    call Random_Range            ;; A = 0..99
+   ld   [wSpawnRoll], a
    ld   b, a
    ld   a, [wBigPercent]
    cp   b
-   jr   z, .normal              ;; porcentaje == tirada
-   jr   c, .normal              ;; porcentaje < tirada
-   ld   a, BIG_OFFSET           ;; tirada < porcentaje: grande
+   jr   z, .notBig              ;; porcentaje == tirada
+   jr   c, .notBig              ;; porcentaje < tirada
+   ld   b, ENEMY_BIG            ;; tirada < porcentaje: grande, si hay sitio
+   call Enemies_CountType
+   cp   MAX_BIG
+   jr   nc, .normal
+   ld   a, BIG_OFFSET
    ld   [wSpawnOff], a
    ld   a, ENEMY_BIG
+   ret
+.notBig:
+   ld   a, [wBigPercent]
+   ld   b, a
+   ld   a, [wSpawnRoll]
+   sub  b                       ;; tirada - %grande
+   ld   b, a
+   ld   a, [wAggrPercent]
+   cp   b
+   jr   z, .normal
+   jr   c, .normal              ;; %agresiva <= (tirada - %grande): normal
+   ld   b, ENEMY_AGGR
+   call Enemies_CountType
+   cp   MAX_AGGR
+   jr   nc, .normal
+   ld   a, AGGR_OFFSET
+   ld   [wSpawnOff], a
+   ld   a, ENEMY_AGGR
    ret
 .normal:
    xor  a
@@ -198,7 +230,7 @@ Enemies_ChooseType:
    ret
 
 ;;-----------------------------------------------------------------
-;; Enemies_Spawn: Crea una celula (normal o grande) en un lado y una posicion al azar, si hay algun hueco libre
+;; Enemies_Spawn: Crea una celula (normal, grande o agresiva) en un lado y una posicion al azar, si hay algun hueco libre
 ;;    Lado 0: sale del izquierdo y va hacia la derecha     Lado 1: sale del derecho y va hacia la izquierda
 ;;    Lado 2: sale del superior y va hacia abajo           Lado 3: sale del inferior y va hacia arriba
 ;;    La celula grande (24x24) nace con toda su superficie dentro del marco: por eso las posiciones se estrechan BIG_OFFSET.
@@ -269,9 +301,13 @@ Enemies_Spawn:
 .setHp:
    ld   a, [wSpawnType]
    cp   ENEMY_BIG
-   ld   a, ENEMY_NORMAL_HP      ;; (ld no toca los flags)
-   jr   nz, .storeHp
-   ld   a, ENEMY_BIG_HP
+   ld   a, ENEMY_BIG_HP         ;; (ld no toca los flags)
+   jr   z, .storeHp
+   ld   a, [wSpawnType]
+   cp   ENEMY_AGGR
+   ld   a, ENEMY_AGGR_HP
+   jr   z, .storeHp
+   ld   a, ENEMY_NORMAL_HP
 .storeHp:
    ld   [hl], a                 ;; Vida (= tamaño en tiles)
    ret
@@ -293,6 +329,19 @@ Enemies_Move:
    ld   [wMoveShiftBig], a
    ld   a, b
    rla                          ;; A = (normal << 1) | grande
+   ld   c, a
+   bit  1, c
+   jr   z, .noAggr              ;; La normal no se mueve ahora: la agresiva tampoco
+   ld   a, [wAggrAcc]
+   add  AGGR_SPEED_PCT          ;; Cada paso de la normal suma AGGR_SPEED_PCT; al llegar a 100 la agresiva da un paso
+   cp   100
+   jr   c, .keepAcc
+   sub  100
+   set  2, c                    ;; Bit 2: las agresivas se mueven en este fotograma
+.keepAcc:
+   ld   [wAggrAcc], a
+.noAggr:
+   ld   a, c
    ld   [wMoveNow], a
    and  a
    ret  z                       ;; Ninguna se mueve en este fotograma
@@ -303,16 +352,29 @@ Enemies_Move:
    ld   a, [hl]                 ;; Tipo
    and  a
    jp   z, .next                ;; Hueco libre
-   cp   ENEMY_NORMAL
+   cp   ENEMY_AGGR
+   jr   z, .isAggr
+   cp   ENEMY_BIG
    ld   a, [wMoveNow]           ;; (ld no toca los flags: sigue valiendo la comparacion)
-   jr   z, .isNormal
-   and  %00000001               ;; Grande
+   jr   z, .isBig
+   and  %00000010               ;; Normal
    jp   z, .next
    jr   .move
-.isNormal:
-   and  %00000010
+.isAggr:
+   ld   a, [wMoveNow]
+   and  %00000100
+   jp   z, .next
+   jr   .move
+.isBig:
+   and  %00000001
    jp   z, .next
 .move:
+   ld   a, [hl]
+   cp   ENEMY_AGGR
+   jr   nz, .straight
+   call Enemy_Chase             ;; La agresiva no va en linea recta: persigue al jugador
+   jp   .next
+.straight:
    push hl                      ;; Guardamos el inicio de este enemigo
    inc  hl
    ld   a, [hl+]                ;; A = direccion (HL pasa a apuntar a X)
@@ -386,6 +448,97 @@ Enemies_Move:
    ENDR
    dec  b
    jp   nz, .loop
+   ret
+
+;;-----------------------------------------------------------------
+;; Enemy_Chase: Mueve 1 pixel a una celula agresiva hacia el CENTRO del jugador, por el eje en el que mas lejos esta (en empate,
+;;    el X). Asi rastrea su fila y su columna en tiempo real y avanza al mismo ritmo que una celula normal. Si ya esta
+;;    centrada sobre el jugador no se mueve.
+;;    Entrada: HL = inicio de la celula     Conserva HL y BC. Destruye: A, DE
+Enemy_Chase:
+   push hl
+   push bc
+   inc  hl
+   inc  hl                      ;; HL -> X
+   ld   d, h
+   ld   e, l                    ;; DE -> X
+   inc  hl
+   inc  hl                      ;; HL -> vida (= tamaño en tiles)
+   ld   a, [hl]
+   add  a
+   add  a                       ;; 4 * tamaño = mitad de su lado en pixeles
+   ld   c, a
+   ld   h, d
+   ld   l, e                    ;; HL -> X
+   ld   a, [hl+]                ;; A = X; HL -> Y
+   add  c
+   ld   d, a                    ;; D = centro X de la celula
+   ld   a, [hl]
+   add  c
+   ld   e, a                    ;; E = centro Y de la celula
+   dec  hl                      ;; HL -> X
+   ;; --- Distancia en X ---
+   ld   a, [wPlayerX]
+   add  TILE_SIZE / 2           ;; centro X del jugador
+   sub  d
+   ld   b, DIR_RIGHT
+   jr   nc, .px
+   cpl
+   inc  a                       ;; valor absoluto
+   ld   b, DIR_LEFT
+.px:
+   ld   [wChDX], a
+   ld   a, b
+   ld   [wChDirX], a
+   ;; --- Distancia en Y ---
+   ld   a, [wPlayerY]
+   add  TILE_SIZE / 2
+   sub  e
+   ld   b, DIR_DOWN
+   jr   nc, .py
+   cpl
+   inc  a
+   ld   b, DIR_UP
+.py:
+   ld   [wChDY], a
+   ld   a, b
+   ld   [wChDirY], a
+   ;; --- Eje de movimiento ---
+   ld   a, [wChDX]
+   ld   b, a
+   ld   a, [wChDY]
+   cp   b
+   jr   c, .moveX               ;; dy < dx
+   jr   nz, .moveY              ;; dy > dx
+   and  a
+   jr   z, .done                ;; dx = dy = 0: ya esta encima
+.moveX:
+   ld   a, [wChDirX]
+   cp   DIR_RIGHT
+   ld   a, [hl]
+   jr   z, .xInc
+   dec  a
+   jr   .xStore
+.xInc:
+   inc  a
+.xStore:
+   ld   [hl], a
+   jr   .done
+.moveY:
+   inc  hl                      ;; HL -> Y
+   ld   a, [wChDirY]
+   cp   DIR_DOWN
+   ld   a, [hl]
+   jr   z, .yInc
+   dec  a
+   jr   .yStore
+.yInc:
+   inc  a
+.yStore:
+   ld   [hl], a
+.done:
+   pop  bc
+   pop  hl
    ret
 
 ;;-----------------------------------------------------------------
@@ -468,9 +621,13 @@ Enemies_CheckBullets:
    ;; --- Muere ---
    ld   a, [hl]                 ;; Tipo, para saber los puntos
    cp   ENEMY_BIG
+   ld   a, ENEMY_BIG_POINTS     ;; (ld no toca los flags)
+   jr   z, .points
+   ld   a, [hl]
+   cp   ENEMY_AGGR
+   ld   a, ENEMY_AGGR_POINTS
+   jr   z, .points
    ld   a, ENEMY_NORMAL_POINTS
-   jr   nz, .points
-   ld   a, ENEMY_BIG_POINTS
 .points:
    push af
    xor  a
@@ -603,7 +760,8 @@ Put_Sprite:
 ;;    Entrada: HL = inicio de la celula, DE = destino en la OAM en sombra (avanza)
 ;;    Destruye: A, BC, HL
 Enemy_DrawSprites:
-   inc  hl
+   ld   a, [hl+]
+   ld   [wDrawType], a          ;; (HL -> direccion)
    inc  hl                      ;; HL -> X
    ld   a, [hl+]
    ld   b, a                    ;; B = X
@@ -612,12 +770,22 @@ Enemy_DrawSprites:
    ld   a, [hl]                 ;; A = N
    ld   [wDrawRows], a
    ld   [wDrawN], a
+   ld   a, [wDrawType]
+   cp   ENEMY_AGGR
+   ld   a, [wDrawN]
+   jr   z, .aggr
    cp   2
    ld   a, TILE_ENEMY1
    jr   c, .tile                ;; N = 1
    ld   a, TILE_BIG2
    jr   z, .tile                ;; N = 2
    ld   a, TILE_BIG3            ;; N = 3
+   jr   .tile
+.aggr:
+   cp   2
+   ld   a, TILE_AGGR1           ;; N = 1 (ya herida)
+   jr   c, .tile
+   ld   a, TILE_AGGR2           ;; N = 2
 .tile:
    ld   [wDrawTile], a
    ld   a, b

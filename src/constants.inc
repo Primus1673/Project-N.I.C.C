@@ -64,6 +64,9 @@ DEF TILE_FONT      EQU 18  ;; Fuente de texto para SPRITES: primer tile de src/s
 DEF TILE_BIG3      EQU 54  ;; Celula grande a 3x3: 9 tiles seguidos (por filas) de src/sprites/celula_grande.z80
 DEF TILE_BIG2      EQU 63  ;; Celula grande a 2x2: 4 tiles seguidos (por filas), a continuacion de los 9 anteriores
 
+DEF TILE_AGGR2     EQU 67  ;; Celula agresiva a 2x2: 4 tiles seguidos (por filas) de src/sprites/celula_agresiva.z80
+DEF TILE_AGGR1     EQU 71  ;; Celula agresiva a 1x1 (tras el primer disparo): 5o tile del mismo archivo
+
 DEF TILE_FONT_DIGIT0 EQU TILE_FONT        ;; Digito N = TILE_FONT_DIGIT0 + N
 DEF TILE_FONT_A    EQU TILE_FONT + 10     ;; Letra A (la B es la siguiente...)
 
@@ -133,9 +136,15 @@ DEF ENEMY_BIG      EQU 2   ;; Celula grande (tipo 2): 3 disparos; cada impacto l
 DEF ENEMY_BIG_HP        EQU 3   ;; La vida de una celula es tambien su TAMAÑO en tiles (3, 2 o 1): ver Enemies_Draw
 DEF MAX_BIG        EQU 2   ;; Celulas grandes a la vez (ver el limite de sprites mas abajo)
 DEF BIG_OFFSET     EQU (ENEMY_BIG_HP - 1) * TILE_SIZE   ;; Lo que se estrecha su zona de aparicion: 16 pixeles
+DEF ENEMY_AGGR     EQU 3   ;; Celula agresiva (tipo 3): 2x2, persigue al jugador; 2 disparos (el primero la encoge a 1x1)
+DEF ENEMY_AGGR_HP       EQU 2
+DEF AGGR_SPEED_PCT EQU 70  ;; Velocidad de la agresiva = este % de la de la celula normal de la fase (1-99)
+ASSERT AGGR_SPEED_PCT > 0 && AGGR_SPEED_PCT < 100
+DEF MAX_AGGR       EQU 2   ;; Celulas agresivas a la vez
+DEF AGGR_OFFSET    EQU (ENEMY_AGGR_HP - 1) * TILE_SIZE   ;; Zona de aparicion estrechada: 8 pixeles
 
 ;;    Limite de sprites: la OAM admite 40. Nave (1) + balas (MAX_BULLETS) + enemigos. Una celula grande a 3x3 gasta 9 sprites.
-ASSERT MAX_BIG * 9 + (MAX_ENEMIES - MAX_BIG) <= MAX_SPRITES - SPR_SLOT_ENEMIES
+ASSERT MAX_BIG * 9 + MAX_AGGR * 4 + (MAX_ENEMIES - MAX_BIG - MAX_AGGR) <= MAX_SPRITES - SPR_SLOT_ENEMIES
 
 DEF ENEMY_SPAWN_FIRST   EQU 60          ;; Fotogramas desde que empieza una fase hasta la primera aparicion
 ;;    La velocidad, el maximo de celulas en pantalla y el ritmo de aparicion dependen de la fase: ver PhaseTable en enemies.asm
@@ -164,6 +173,7 @@ DEF STATE_RESULTS  EQU 5     ;; Pantalla de puntuacion final (tras la ultima fas
 DEF SCORE_DIGITS   EQU 5     ;; Puntuacion de 5 cifras decimales (maximo 99999, se satura)
 DEF ENEMY_NORMAL_POINTS EQU 1 ;; Puntos de la celula tipo 1, EN DECENAS (1 = 10 puntos)
 DEF ENEMY_BIG_POINTS    EQU 5 ;; Puntos de la celula grande, en decenas (50 puntos)
+DEF ENEMY_AGGR_POINTS   EQU 3 ;; Puntos de la celula agresiva, en decenas (30 puntos)
 
 ;;--------------------------------------
 ;;-- HUD: ocupa la fila superior del marco (fila 0 del mapa de fondo)
