@@ -67,6 +67,8 @@ DEF TILE_BIG2      EQU 63  ;; Celula grande a 2x2: 4 tiles seguidos (por filas),
 DEF TILE_AGGR2     EQU 67  ;; Celula agresiva a 2x2: 4 tiles seguidos (por filas) de src/sprites/celula_agresiva.z80
 DEF TILE_AGGR1     EQU 71  ;; Celula agresiva a 1x1 (tras el primer disparo): 5o tile del mismo archivo
 
+DEF TILE_TITLE     EQU 72  ;; Letras grandes del titulo: 38 tiles (P,R,O,J,E,C,T,N,I a 2x2 y el punto a 1x2) de src/sprites/titulo.z80
+
 DEF TILE_FONT_DIGIT0 EQU TILE_FONT        ;; Digito N = TILE_FONT_DIGIT0 + N
 DEF TILE_FONT_A    EQU TILE_FONT + 10     ;; Letra A (la B es la siguiente...)
 
@@ -169,6 +171,7 @@ DEF STATE_GAMEOVER EQU 1     ;; Sin vidas: todo congelado GAMEOVER_FRAMES fotogr
 DEF STATE_FADE_OUT EQU 2     ;; Fin de fase: la pantalla se oscurece hasta el negro
 DEF STATE_INTRO    EQU 3     ;; Pantalla negra con el texto "FASE N"
 DEF STATE_FADE_IN  EQU 4     ;; La pantalla vuelve a aclararse y empieza la fase
+DEF STATE_TITLE    EQU 6     ;; Pantalla de titulo: START empieza la partida
 DEF STATE_RESULTS  EQU 5     ;; Pantalla de puntuacion final (tras la ultima fase o tras perder). START reinicia
 DEF SCORE_DIGITS   EQU 5     ;; Puntuacion de 5 cifras decimales (maximo 99999, se satura)
 DEF ENEMY_NORMAL_POINTS EQU 1 ;; Puntos de la celula tipo 1, EN DECENAS (1 = 10 puntos)
@@ -232,3 +235,10 @@ DEF RES_VALUE_COL  EQU 13    ;; Columna de la primera cifra de cada valor (5 cif
 DEF RES_WAIT       EQU 30    ;; Fotogramas entre una linea y la siguiente (0,5 s)
 
 ENDC
+
+;;--------------------------------------
+;;-- Pantalla de titulo (title.asm): se dibuja en el mapa de fondo 1, igual que la de puntuacion
+DEF TITLE_ROW1     EQU 4     ;; Fila donde empieza "PROJECT" (ocupa 2 filas)
+DEF TITLE_ROW2     EQU 7     ;; Fila donde empieza "N.I.C.C" (ocupa 2 filas)
+DEF TITLE_ROW_PRESS EQU 14   ;; Fila de "PULSA START"
+DEF TITLE_BLINK    EQU 30    ;; Fotogramas que "PULSA START" esta visible / oculto (0,5 s)

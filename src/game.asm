@@ -102,6 +102,8 @@ Game_Update::
    jp   z, .fadeIn
    cp   STATE_GAMEOVER
    jr   z, .gameOver
+   cp   STATE_TITLE
+   jp   z, Title_Update
    jp   Results_Update       ;; STATE_RESULTS
 
 .gameOver:                   ;; Todo congelado un momento (START lo salta) y luego fundido a la pantalla de puntuacion
@@ -225,7 +227,16 @@ Game_ApplyFade::
    ldh  [rBGP], a
    ldh  [rOBP0], a
    ret
-.results:                    ;; Pantalla de puntuacion: mapa 1 ($9C00) y paleta invertida (tile 0 negro, letras blancas)
+.results:
+   cp   2
+   jr   nz, .results1
+   ldh  a, [rLCDC]           ;; Titulo (wResultsView = 2): mapa 1 y paleta invertida desde el primer fotograma
+   set  3, a
+   ldh  [rLCDC], a
+   ld   a, BGP_RESULTS
+   ldh  [rBGP], a
+   ret
+.results1:                   ;; Pantalla de puntuacion: mapa 1 ($9C00) y paleta invertida (tile 0 negro, letras blancas)
    ldh  a, [rLCDC]
    set  3, a                 ;; Bit 3 de LCDC = 1: el fondo usa el mapa 1
    ldh  [rLCDC], a
@@ -254,6 +265,8 @@ Game_Draw::
    jr   z, .intro
    cp   STATE_RESULTS
    jp   z, Sprites_Clear     ;; La puntuacion se dibuja en el fondo: ningun sprite
+   cp   STATE_TITLE
+   jp   z, Sprites_Clear     ;; El titulo tambien
    call Player_Draw
    call Bullets_Draw
    jp   Enemies_Draw

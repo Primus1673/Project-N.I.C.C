@@ -25,6 +25,8 @@
 ;; FASE 5: la partida se divide en fases (niveles) de 1 minuto con dificultad creciente y pantalla de "FASE N" entre ellas.
 ;; FASE 6: combo de bajas con multiplicador.
 ;; FASE 7: pantalla de puntuacion final con bonus por fases superadas y corazones que quedan.
+;; FASE 8-9: celula grande y celula agresiva.
+;; FASE 10: pantalla de titulo (START empieza; tras la puntuacion final START vuelve al titulo).
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
 INCLUDE "constants.inc"
@@ -80,9 +82,9 @@ main::
    call Sprites_Init
    call Input_Init
    call Random_Init
-   call Game_Start           ;; Partida nueva: jugador, vidas, puntuacion y pantalla de "FASE 1"
+   call Title_Begin          ;; Pantalla de titulo (la partida empieza al pulsar START: Game_Start)
    call Hud_Update           ;; Dibuja el HUD ahora (LCD apagada: se puede escribir en VRAM)
-   call Game_ApplyFade       ;; Paletas de arranque (la partida empieza con la pantalla en negro)
+   call Game_ApplyFade       ;; Paletas de arranque (el titulo usa el mapa 1 y la paleta invertida)
    call Game_Draw            ;; Para que el primer DMA ya lleve los sprites en su sitio
 
    ;;--------------------------------------

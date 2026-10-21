@@ -156,7 +156,7 @@ Dec5_AddThousands:
 ;;-----------------------------------------------------------------
 ;; Row_Clear: Rellena la fila de tiles vacios (se ven negros)
 ;;    Destruye: A, BC, D, HL
-Row_Clear:
+Row_Clear::
    ld   hl, wRowBuf
    ld   bc, SCREEN_TILES_W
    ld   a, TILE_BLANK
@@ -166,7 +166,7 @@ Row_Clear:
 ;; Row_Commit: Marca la fila como lista: se copiara a la fila A del mapa en el proximo VBlank
 ;;    Entrada: A = fila del mapa (0-17)
 ;;    Destruye: A
-Row_Commit:
+Row_Commit::
    ld   [wRowIdx], a
    ld   a, 1
    ld   [wRowPending], a
@@ -196,7 +196,7 @@ Row_PutString:
 ;; Row_PutCentered: Escribe una cadena centrada en la fila
 ;;    Entrada: HL = cadena
 ;;    Destruye: A, B, DE, HL
-Row_PutCentered:
+Row_PutCentered::
    push hl
    ld   b, 0                 ;; B = longitud
 .count:
@@ -348,7 +348,7 @@ Results_Begin::
    ret
 
 ;;-----------------------------------------------------------------
-;; Results_Update: Un fotograma de la animacion (STATE_RESULTS). Al terminar, START empieza una partida nueva.
+;; Results_Update: Un fotograma de la animacion (STATE_RESULTS). Al terminar, START vuelve a la pantalla de titulo.
 ;;    Destruye: A, BC, DE, HL
 Results_Update::
    ld   a, [wResStage]
@@ -398,7 +398,7 @@ Results_Update::
    ldh  a, [hInputNew]
    bit  BTNB_START, a
    ret  z
-   jp   Game_Start
+   jp   main                 ;; Reinicio completo: el juego vuelve a la pantalla de titulo
 
 ;;-- Pasa a la siguiente etapa. Entrada: B = fotogramas de espera (con la animacion saltada, ninguno)
 .advance:
