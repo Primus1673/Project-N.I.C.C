@@ -1,14 +1,13 @@
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
-;; title.asm : Menu del titulo, tabla de puntuaciones, controles y eleccion de nombre
+;; title.asm : Menu del titulo, tabla de puntuaciones y eleccion de nombre
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 ;; Todas estas pantallas se dibujan en el mapa de fondo 1 ($9C00) con la paleta invertida (fondo negro, letras blancas), igual
 ;; que la de resultados: wResultsView = 2 (ver Game_ApplyFade). Cada pantalla se prepara fila a fila con Row_Clear, Row_Put* y
 ;; Row_Commit (results.asm); Results_Blit las copia a la VRAM, 2 por VBlank, asi que una pantalla nueva "se barre" en ~9 fotogramas.
 ;; Mientras quedan filas por copiar (wDirtyCount > 0) los botones se ignoran.
 ;;
-;;   Menu (STATE_TITLE)  : arriba/abajo cambian de opcion, A o START la eligen: JUGAR / PUNTUACIONES / CONTROLES
+;;   Menu (STATE_TITLE)  : arriba/abajo cambian de opcion, A o START la eligen: JUGAR / PUNTUACIONES
 ;;   Puntuaciones        : la tabla; A, B o START vuelven (al menu, o a reiniciar el juego si se viene de una partida)
-;;   Controles           : explicacion breve; A, B o START vuelven al menu
 ;;   Nombre (STATE_NAME) : tras una partida que entra en la tabla: arriba/abajo cambian la letra, izquierda/derecha la posicion,
 ;;                         A o START aceptan
 ;; Para volver al menu desde los resultados se reinicia el juego entero (results.asm salta a "main").
@@ -20,7 +19,7 @@ DEF TITLE_DOT EQU 9          ;; En las palabras del titulo, el indice del punto 
 
 SECTION "Title Variables", WRAM0
 
-wMenuSel:    db       ;; Opcion elegida del menu (0 = JUGAR, 1 = PUNTUACIONES, 2 = CONTROLES)
+wMenuSel:    db       ;; Opcion elegida del menu (0 = JUGAR, 1 = PUNTUACIONES)
 wScoresFrom: db       ;; 0 = la tabla se ha abierto desde el menu; 1 = viene de acabar una partida
 wListIdx:    db       ;; Entrada que se esta dibujando en la tabla
 wNameIdx:    db       ;; Letra del nombre que se esta editando (0-2)
@@ -93,16 +92,6 @@ MACRO MenuOption
    call Row_Commit
 ENDM
 
-;; TextRow texto, columna, fila: una fila con un texto
-MACRO TextRow
-   call Row_Clear
-   ld   hl, \1
-   ld   b, \2
-   call Row_PutString
-   ld   a, \3
-   call Row_Commit
-ENDM
-
 ;; CenteredRow texto, fila: una fila con un texto centrado
 MACRO CenteredRow
    call Row_Clear
@@ -133,6 +122,7 @@ Title_Begin::
    ld   [wEndKind], a
    ld   [wMenuSel], a
    ld   [wScoresFrom], a
+   ld   [wTextDark], a       ;; El texto con sprites sale en blanco (se pone en negro solo en la pausa)
    ld   a, SCORE_SLOTS
    ld   [wNewPos], a
    call Menu_Show
@@ -159,7 +149,6 @@ Menu_Show:
 Menu_PaintOptions:
    MenuOption 0, StrPlay, MENU_ROW0
    MenuOption 1, StrScores, MENU_ROW0 + 2
-   MenuOption 2, StrControls, MENU_ROW0 + 4
    ret
 
 ;;-----------------------------------------------------------------
@@ -169,8 +158,6 @@ Menu_Update::
    ld   a, [wGameState]
    cp   STATE_SCORES
    jp   z, Scores_Update
-   cp   STATE_CONTROLS
-   jp   z, Controls_Update
    cp   STATE_NAME
    jp   z, Name_Update
    ld   a, [wDirtyCount]
@@ -189,10 +176,7 @@ Menu_Update::
 .choose:
    ld   a, [wMenuSel]
    and  a
-   jr   z, .play
-   dec  a
-   jr   z, .scores
-   jp   Controls_Show
+   jr   nz, .scores
 .play:
    call Random_Init          ;; Semilla distinta en cada partida: depende de cuando se pulse el boton
    jp   Game_Start
@@ -201,58 +185,11 @@ Menu_Update::
    ld   [wScoresFrom], a
    jp   Scores_Show
 .up:
+.down:                       ;; Con 2 opciones, arriba y abajo hacen lo mismo: pasar a la otra
    ld   a, [wMenuSel]
-   and  a
-   jr   nz, .dec
-   ld   a, 3
-.dec:
-   dec  a
+   xor  1
    ld   [wMenuSel], a
    jp   Menu_PaintOptions
-.down:
-   ld   a, [wMenuSel]
-   inc  a
-   cp   3
-   jr   nz, .set
-   xor  a
-.set:
-   ld   [wMenuSel], a
-   jp   Menu_PaintOptions
-
-;;=================================================================
-;; Controles
-;;=================================================================
-
-;;-----------------------------------------------------------------
-;; Controls_Show: Dibuja la pantalla de controles
-;;    Destruye: A, BC, DE, HL
-Controls_Show:
-   ld   a, STATE_CONTROLS
-   call Screen_Enter
-   CenteredRow StrControls, 1
-   TextRow StrCtl1, 1, 3
-   TextRow StrCtl2, 1, 5
-   TextRow StrCtl3, 1, 6
-   TextRow StrCtl4, 1, 8
-   TextRow StrCtl5, 1, 9
-   TextRow StrCtl6, 1, 11
-   TextRow StrCtl7, 1, 12
-   TextRow StrCtl8, 1, 14
-   TextRow StrCtl9, 1, 15
-   CenteredRow StrBack, 17
-   ret
-
-;;-----------------------------------------------------------------
-;; Controls_Update: Cualquier boton (A, B o START) vuelve al menu
-;;    Destruye: A, BC, DE, HL
-Controls_Update:
-   ld   a, [wDirtyCount]
-   and  a
-   ret  nz
-   ldh  a, [hInputNew]
-   and  (1 << BTNB_A) | (1 << BTNB_B) | (1 << BTNB_START)
-   ret  z
-   jp   Menu_Show
 
 ;;=================================================================
 ;; Tabla de puntuaciones

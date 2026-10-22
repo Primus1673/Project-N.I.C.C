@@ -182,7 +182,7 @@ DEF STATE_INTRO    EQU 3     ;; Pantalla negra con el texto "FASE N"
 DEF STATE_FADE_IN  EQU 4     ;; La pantalla vuelve a aclararse y empieza la fase
 DEF STATE_TITLE    EQU 6     ;; Menu del titulo (JUGAR / PUNTUACIONES / CONTROLES)
 DEF STATE_SCORES   EQU 7     ;; Tabla de puntuaciones
-DEF STATE_CONTROLS EQU 8     ;; Pantalla de controles
+DEF STATE_PAUSED   EQU 10    ;; Partida en pausa (START): todo congelado, pantalla negra con "PAUSA"
 DEF STATE_NAME     EQU 9     ;; Eleccion del nombre (3 letras) tras entrar en la tabla
 DEF STATE_RESULTS  EQU 5     ;; Pantalla de puntuacion final (tras la ultima fase o tras perder). START reinicia
 DEF SCORE_DIGITS   EQU 5     ;; Puntuacion de 5 cifras decimales (maximo 99999, se satura)
@@ -254,7 +254,7 @@ ENDC
 ;;-- Pantalla de titulo, tabla de puntuaciones y eleccion de nombre (title.asm, save.asm). Todo va en el mapa de fondo 1.
 DEF TITLE_ROW1     EQU 3     ;; Fila donde empieza "PROJECT" (ocupa 2 filas)
 DEF TITLE_ROW2     EQU 6     ;; Fila donde empieza "N.I.C.C" (ocupa 2 filas)
-DEF MENU_ROW0      EQU 11    ;; Fila de la primera opcion del menu (una opcion cada 2 filas)
+DEF MENU_ROW0      EQU 12    ;; Fila de la primera opcion del menu (una opcion cada 2 filas)
 DEF MENU_CURSOR_COL EQU 3    ;; Columna de la flecha que marca la opcion elegida
 DEF MENU_TEXT_COL  EQU 5     ;; Columna del texto de las opciones
 DEF TILE_ARROW     EQU TILE_TITLE + 38   ;; Flecha ">" (tile de titulo.z80)

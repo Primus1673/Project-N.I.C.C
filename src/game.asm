@@ -91,6 +91,8 @@ Game_StepTimer:
 ;; Game_Update: Un fotograma del estado de la partida (ver STATE_* en constants.inc):
 ;;    JUGANDO -> (fin de fase) FADE_OUT -> INTRO ("FASE N") -> FADE_IN -> JUGANDO ...
 ;;    Sin vidas: GAMEOVER (congelado) -> FADE_OUT -> RESULTS. Tras la ultima fase: FADE_OUT -> RESULTS.
+
+;;    START durante la partida la pone en PAUSA (STATE_PAUSED): todo se congela y vuelve con otro START.
 ;;    En RESULTS se cuenta la puntuacion final (results.asm) y START empieza una partida nueva.
 ;;    Destruye: A, BC, DE, HL
 Game_Update::
@@ -105,9 +107,11 @@ Game_Update::
    jp   z, .fadeIn
    cp   STATE_GAMEOVER
    jr   z, .gameOver
+   cp   STATE_PAUSED
+   jr   z, .paused
    cp   STATE_RESULTS
    jp   z, Results_Update
-   jp   Menu_Update          ;; STATE_TITLE, STATE_SCORES, STATE_CONTROLS y STATE_NAME (title.asm)
+   jp   Menu_Update          ;; STATE_TITLE, STATE_SCORES y STATE_NAME (title.asm)
 
 .gameOver:                   ;; Todo congelado un momento (START lo salta) y luego fundido a la pantalla de puntuacion
    ld   a, [wStateTimer]
@@ -122,7 +126,22 @@ Game_Update::
    ld   [wEndKind], a
    jr   .startFade
 
+.paused:                     ;; Todo congelado: solo se espera START
+   ldh  a, [hInputNew]
+   bit  BTNB_START, a
+   ret  z
+   ld   a, STATE_PLAYING     ;; La partida sigue exactamente donde estaba
+   ld   [wGameState], a
+   ret
+
 .playing:
+   ldh  a, [hInputNew]
+   bit  BTNB_START, a
+   jr   z, .noPause
+   ld   a, STATE_PAUSED      ;; START: pausa (el juego sigue a la vista, congelado)
+   ld   [wGameState], a
+   ret
+.noPause:
    call Player_Update
    call Bullets_Update
    call Enemies_Update       ;; Incluye los choques con el jugador (Game_PlayerHit)
@@ -281,11 +300,27 @@ Game_Draw::
    jr   z, .intro
    cp   STATE_RESULTS
    jp   z, Sprites_Clear     ;; La puntuacion se dibuja en el fondo: ningun sprite
+   cp   STATE_PAUSED
+   jr   z, .paused
    cp   STATE_TITLE
    jp   nc, Sprites_Clear    ;; El titulo, las puntuaciones, los controles y el nombre tambien (estados >= STATE_TITLE)
    call Player_Draw
    call Bullets_Draw
    jp   Enemies_Draw
+
+.paused:                     ;; El juego congelado a la vista, con "PAUSA" en negro encima
+   call Player_Draw
+   call Bullets_Draw
+   ld   de, wShadowOAM + SPR_SLOT_ENEMIES * OAM_ENTRY_SIZE
+   ld   a, 1
+   ld   [wTextDark], a
+   ld   hl, StrPaused
+   ld   b, (SCREEN_W - 5 * TILE_SIZE) / 2
+   ld   c, TEXT_CENTER_Y
+   call Text_DrawString      ;; Antes que los enemigos: si no caben todos, el texto no se pierde
+   xor  a
+   ld   [wTextDark], a
+   jp   Enemies_DrawAt
 
 .intro:                      ;; "FASE N" centrado: 6 caracteres de 8 pixeles
    call Sprites_Clear

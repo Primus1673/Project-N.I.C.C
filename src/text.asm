@@ -23,11 +23,16 @@ REPT 26
    DEF _n += 1
 ENDR
 
+SECTION "Text Variables", WRAM0
+
+wTextDark:: db        ;; 0 = texto blanco (paleta OBP1, para pantallas negras); 1 = texto negro (paleta OBP0, sobre el juego: pausa)
+
 SECTION "Text", ROM0
 
 ;;--------------------------------------
 ;;-- Cadenas (terminan en TEXT_END; el espacio es el tile 0, que no se dibuja)
 StrPhase:: db "FASE ", TEXT_END
+StrPaused:: db "PAUSA", TEXT_END
 StrWin::     db "VICTORIA", TEXT_END      ;; Pantalla de puntuacion (se dibujan en el fondo, ver results.asm)
 StrLose::    db "GAME OVER", TEXT_END
 StrPoints::  db "PUNTOS", TEXT_END
@@ -41,20 +46,10 @@ StrPlace::   db "PUESTO", TEXT_END
 StrName::    db "NOMBRE", TEXT_END
 StrPlay::    db "JUGAR", TEXT_END
 StrScores::  db "PUNTUACIONES", TEXT_END
-StrControls:: db "CONTROLES", TEXT_END
 StrNameHelp1:: db "ARRIBA ABAJO  LETRA", TEXT_END
 StrNameHelp2:: db "IZQ DER  POSICION", TEXT_END
 StrNameHelp3:: db "A  ACEPTAR", TEXT_END
-StrCtl1::    db "CRUCETA  MOVER", TEXT_END
-StrCtl2::    db "A DISPARA ARRIBA", TEXT_END
-StrCtl3::    db "  Y ABAJO", TEXT_END
-StrCtl4::    db "B DISPARA IZQUIERDA", TEXT_END
-StrCtl5::    db "  Y DERECHA", TEXT_END
-StrCtl6::    db "CADA BOTON RECARGA", TEXT_END
-StrCtl7::    db "DURANTE 1 SEGUNDO", TEXT_END
-StrCtl8::    db "ENCADENA BAJAS PARA", TEXT_END
-StrCtl9::    db "SUBIR EL COMBO", TEXT_END
-StrBack::    db "PULSA B PARA VOLVER", TEXT_END
+
 
 ;;-----------------------------------------------------------------
 ;; Text_DrawChar: Escribe 1 caracter como sprite en la OAM en sombra
@@ -75,8 +70,13 @@ Text_DrawChar::
    pop  af
    ld   [de], a              ;; Byte 2: tile
    inc  de
-   ld   a, TEXT_ATTR
-   ld   [de], a              ;; Byte 3: atributos (paleta OBP1)
+   ld   a, [wTextDark]
+   and  a
+   ld   a, TEXT_ATTR         ;; (ld no toca los flags)
+   jr   z, .attr
+   xor  a                    ;; Texto negro: paleta OBP0
+.attr:
+   ld   [de], a              ;; Byte 3: atributos (paleta OBP1 o OBP0)
    inc  de
    ret
 

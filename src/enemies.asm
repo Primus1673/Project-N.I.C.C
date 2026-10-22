@@ -832,9 +832,16 @@ Enemy_DrawSprites:
 ;;    El DMA lo copiara a la OAM real en el proximo VBlank.
 ;;    Destruye: A, BC, DE, HL
 Enemies_Draw::
+   ld   de, wShadowOAM + SPR_SLOT_ENEMIES * OAM_ENTRY_SIZE
+   ;; sigue en Enemies_DrawAt
+
+;;-----------------------------------------------------------------
+;; Enemies_DrawAt: Como Enemies_Draw, pero empezando en el sprite de la OAM en sombra que indica DE (lo usa la pausa,
+;;    que escribe antes su texto)
+;;    Entrada: DE = primer sprite libre
+Enemies_DrawAt::
    ASSERT ENEMY_SIZE == 5       ;; Esta rutina asume la estructura [tipo, direccion, X, Y, vida]
    ld   hl, wEnemies
-   ld   de, wShadowOAM + SPR_SLOT_ENEMIES * OAM_ENTRY_SIZE
    ld   b, MAX_ENEMIES
 .enemy:
    ld   a, [hl]                 ;; Tipo
