@@ -69,6 +69,8 @@ DEF TILE_AGGR1     EQU 71  ;; Celula agresiva a 1x1 (tras el primer disparo): 5o
 
 DEF TILE_TITLE     EQU 72  ;; Letras grandes del titulo: 38 tiles (P,R,O,J,E,C,T,N,I a 2x2 y el punto a 1x2) de src/sprites/titulo.z80
 
+DEF TILE_EXPL      EQU 112 ;; Explosion: 3 tiles seguidos de src/sprites/explosion.z80
+
 DEF TILE_FONT_DIGIT0 EQU TILE_FONT        ;; Digito N = TILE_FONT_DIGIT0 + N
 DEF TILE_FONT_A    EQU TILE_FONT + 10     ;; Letra A (la B es la siguiente...)
 
@@ -147,6 +149,13 @@ DEF AGGR_OFFSET    EQU (ENEMY_AGGR_HP - 1) * TILE_SIZE   ;; Zona de aparicion es
 
 ;;    Limite de sprites: la OAM admite 40. Nave (1) + balas (MAX_BULLETS) + enemigos. Una celula grande a 3x3 gasta 9 sprites.
 ASSERT MAX_BIG * 9 + MAX_AGGR * 4 + (MAX_ENEMIES - MAX_BIG - MAX_AGGR) <= MAX_SPRITES - SPR_SLOT_ENEMIES
+
+DEF MAX_EXPLOSIONS EQU 3    ;; Explosiones a la vez (1 sprite cada una)
+DEF EXPL_SIZE      EQU 3    ;; [fotogramas que quedan, X, Y]
+DEF EXPL_FRAMES    EQU 12   ;; Duracion de una explosion (3 dibujos de 4 fotogramas)
+DEF FLASH_FRAMES   EQU 4    ;; Duracion del destello de pantalla al ser golpeado
+DEF PALETTE_FLASH_HI EQU %00000000   ;; Destello: todo el fondo blanco...
+DEF PALETTE_FLASH_LO EQU %01010100   ;; ...y despues claro, antes de volver a la paleta normal
 
 DEF ENEMY_SPAWN_FIRST   EQU 60          ;; Fotogramas desde que empieza una fase hasta la primera aparicion
 ;;    La velocidad, el maximo de celulas en pantalla y el ritmo de aparicion dependen de la fase: ver PhaseTable en enemies.asm

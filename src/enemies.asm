@@ -630,6 +630,17 @@ Enemies_CheckBullets:
    ld   a, ENEMY_NORMAL_POINTS
 .points:
    push af
+   push bc
+   push hl
+   inc  hl
+   inc  hl                      ;; HL -> X (la celula que muere es siempre de 1x1: la explosion va en su sitio)
+   ld   a, [hl+]
+   ld   b, a
+   ld   a, [hl]
+   ld   c, a
+   call Explo_Spawn
+   pop  hl
+   pop  bc
    xor  a
    ld   [hl], a                 ;; Tipo 0: el hueco queda libre
    pop  af
@@ -730,7 +741,7 @@ Enemies_Update::
 ;;    Salida: DE avanza al siguiente sprite. Si la OAM ya esta llena no escribe nada (la OAM en sombra ocupa OAM_SIZE bytes).
 ;;    Destruye: A
 ASSERT OAM_SIZE < 256
-Put_Sprite:
+Put_Sprite::
    push af
    ld   a, e
    cp   OAM_SIZE                ;; wShadowOAM esta alineada a 256: el byte bajo de DE es el desplazamiento dentro de la OAM
@@ -817,7 +828,7 @@ Enemy_DrawSprites:
 
 ;;-----------------------------------------------------------------
 ;; Enemies_Draw: Escribe los enemigos en la OAM en sombra, a partir del sprite SPR_SLOT_ENEMIES, usando solo los sprites que
-;;    hacen falta (1, 4 o 9 por celula). Los sprites que sobran hasta el final de la OAM se ocultan (Y=0).
+;;    hacen falta (1, 4 o 9 por celula). Despues Explo_Draw dibuja las explosiones y oculta los sprites que sobran (Y=0).
 ;;    El DMA lo copiara a la OAM real en el proximo VBlank.
 ;;    Destruye: A, BC, DE, HL
 Enemies_Draw::
@@ -840,11 +851,4 @@ Enemies_Draw::
    ENDR
    dec  b
    jr   nz, .enemy
-.hideRest:                      ;; Oculta los sprites que no se han usado, hasta el final de la OAM
-   ld   a, e
-   cp   OAM_SIZE
-   ret  nc
-   xor  a
-   ld   [de], a
-   inc  de
-   jr   .hideRest
+   jp   Explo_Draw              ;; Dibuja las explosiones a continuacion y oculta los sprites que sobren

@@ -62,6 +62,7 @@ Sprites_Clear::
 ;;    - src/sprites/celula_grande.z80 -> a partir del tile TILE_BIG3 (celula grande: 9 tiles a 3x3 y 4 tiles a 2x2)
 ;;    - src/sprites/celula_agresiva.z80 -> a partir del tile TILE_AGGR2 (celula agresiva: 4 tiles a 2x2 y 1 tile a 1x1)
 ;;    - src/sprites/titulo.z80 -> a partir del tile TILE_TITLE (letras grandes de la pantalla de titulo)
+;;    - src/sprites/explosion.z80 -> a partir del tile TILE_EXPL (3 dibujos de la explosion de una celula)
 ;;    El tile 0 (TILE_BLANK) no se copia: ya esta vacio porque main.asm borra la VRAM al arrancar.
 ;;    IMPORTANTE: solo llamar con la LCD apagada o durante el VBlank
 ;;    Destruye: A, BC, DE, HL
@@ -110,6 +111,11 @@ Sprites_LoadTiles::
    ld   hl, _VRAM + TILE_TITLE * TILE_BYTES
    ld   bc, TitleTiles.end - TitleTiles
    call MemCopy
+
+   ld   de, ExplosionTiles
+   ld   hl, _VRAM + TILE_EXPL * TILE_BYTES
+   ld   bc, ExplosionTiles.end - ExplosionTiles
+   call MemCopy
    ret
 
 ;;-----------------------------------------------------------------
@@ -144,3 +150,6 @@ AggrCellTiles.end:
 
 INCLUDE "sprites/titulo.z80"
 TitleTiles.end:
+
+INCLUDE "sprites/explosion.z80"
+ExplosionTiles.end:

@@ -17,6 +17,7 @@ wPhaseTimerHi: db
 wFadeLevel:   db                ;; Oscurecimiento de la pantalla: 0 normal ... FADE_BLACK negro
 wStateTimer:  db                ;; Cuenta atras de los estados de transicion
 wEndKind::    db                ;; END_NONE, END_WIN (todas las fases superadas) o END_LOSE (sin vidas)
+wFlash:       db                ;; Fotogramas que le quedan al destello de pantalla (golpe al jugador)
 wResultsView: db                ;; 1 = se muestra la pantalla de puntuacion (mapa de fondo 1 y paleta invertida)
 
 SECTION "Game", ROM0
@@ -30,6 +31,7 @@ Game_Start::
    xor  a
    ld   [wEndKind], a        ;; La partida sigue
    ld   [wResultsView], a    ;; Se vuelve al mapa de fondo del juego
+   ld   [wFlash], a
    ld   a, STATE_PLAYING
    ld   [wGameState], a
    ld   a, PLAYER_LIVES
@@ -51,6 +53,7 @@ Game_Start::
 Game_BeginPhase:
    call Bullets_Init
    call Enemies_Init
+   call Explo_Init
    ld   a, [wPhase]
    dec  a
    call Enemies_SetPhase
@@ -123,6 +126,7 @@ Game_Update::
    call Player_Update
    call Bullets_Update
    call Enemies_Update       ;; Incluye los choques con el jugador (Game_PlayerHit)
+   call Explo_Update
    ld   a, [wGameState]
    cp   STATE_PLAYING
    ret  nz                   ;; Ha perdido la ultima vida en este fotograma
@@ -224,8 +228,20 @@ Game_ApplyFade::
    ld   hl, FadePalettes
    add  hl, de
    ld   a, [hl]
+   ldh  [rOBP0], a           ;; Los sprites siempre con la paleta normal
+   ld   b, a
+   ld   a, [wFlash]
+   and  a
+   jr   z, .setBg
+   dec  a
+   ld   [wFlash], a
+   ld   b, PALETTE_FLASH_HI  ;; Destello tras un golpe: fondo blanco los primeros fotogramas y luego claro
+   cp   FLASH_FRAMES / 2
+   jr   nc, .setBg
+   ld   b, PALETTE_FLASH_LO
+.setBg:
+   ld   a, b
    ldh  [rBGP], a
-   ldh  [rOBP0], a
    ret
 .results:
    cp   2
@@ -287,6 +303,8 @@ Game_Draw::
 ;;    Destruye: A
 Game_PlayerHit::
    call Combo_Reset          ;; Un golpe rompe la cadena de bajas
+   ld   a, FLASH_FRAMES
+   ld   [wFlash], a          ;; Destello de pantalla
    ld   a, [wLives]
    dec  a
    ld   [wLives], a
