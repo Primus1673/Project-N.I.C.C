@@ -35,6 +35,26 @@ StrPhases::  db "FASES", TEXT_END
 StrHearts::  db "CORAZONES", TEXT_END
 StrTotal::   db "TOTAL", TEXT_END
 StrPress::   db "PULSA START", TEXT_END
+StrRecord::  db "RECORD", TEXT_END
+StrNewRecord:: db "NUEVO RECORD", TEXT_END
+StrPlace::   db "PUESTO", TEXT_END
+StrName::    db "NOMBRE", TEXT_END
+StrPlay::    db "JUGAR", TEXT_END
+StrScores::  db "PUNTUACIONES", TEXT_END
+StrControls:: db "CONTROLES", TEXT_END
+StrNameHelp1:: db "ARRIBA ABAJO  LETRA", TEXT_END
+StrNameHelp2:: db "IZQ DER  POSICION", TEXT_END
+StrNameHelp3:: db "A  ACEPTAR", TEXT_END
+StrCtl1::    db "CRUCETA  MOVER", TEXT_END
+StrCtl2::    db "A DISPARA ARRIBA", TEXT_END
+StrCtl3::    db "  Y ABAJO", TEXT_END
+StrCtl4::    db "B DISPARA IZQUIERDA", TEXT_END
+StrCtl5::    db "  Y DERECHA", TEXT_END
+StrCtl6::    db "CADA BOTON RECARGA", TEXT_END
+StrCtl7::    db "DURANTE 1 SEGUNDO", TEXT_END
+StrCtl8::    db "ENCADENA BAJAS PARA", TEXT_END
+StrCtl9::    db "SUBIR EL COMBO", TEXT_END
+StrBack::    db "PULSA B PARA VOLVER", TEXT_END
 
 ;;-----------------------------------------------------------------
 ;; Text_DrawChar: Escribe 1 caracter como sprite en la OAM en sombra

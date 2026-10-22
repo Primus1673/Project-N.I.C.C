@@ -26,17 +26,19 @@ DEF RES_STAGE_PHASES EQU 3
 DEF RES_STAGE_HEARTS EQU 4
 DEF RES_STAGE_TOTAL  EQU 5   ;; Escribe el TOTAL inicial (= PUNTOS)
 DEF RES_STAGE_COUNT  EQU 6   ;; Sube el TOTAL de 500 en 500 hasta el valor final
-DEF RES_STAGE_PRESS  EQU 7   ;; "PULSA START"
-DEF RES_STAGE_DONE   EQU 8   ;; Fin de la animacion: se espera START
+DEF RES_STAGE_RECORD EQU 7   ;; "NUEVO RECORD" o "RECORD n"
+DEF RES_STAGE_PRESS  EQU 8   ;; "PULSA START"
+DEF RES_STAGE_DONE   EQU 9   ;; Fin de la animacion: se espera START
 
 DEF RES_COUNT_INDEX  EQU 2   ;; El recuento suma 5 en la cifra de las centenas (indice 2 de 0 a 4): de 500 en 500
 DEF RES_COUNT_AMOUNT EQU 5
 
 SECTION "Results Variables", WRAM0
 
-wRowBuf:      ds SCREEN_TILES_W   ;; Fila preparada para copiar al mapa de fondo
-wRowIdx:      db                  ;; Fila del mapa (0-17) donde copiarla
-wRowPending:  db                  ;; 1 = hay una fila esperando al proximo VBlank
+wRowBuf::     ds SCREEN_TILES_W   ;; Fila que se esta preparando (Row_Commit la guarda en wScrBuf)
+wScrBuf:      ds SCREEN_TILES_W * SCREEN_TILES_H   ;; Copia en RAM del mapa de fondo 1: 18 filas de 20 tiles
+wRowDirty:    ds SCREEN_TILES_H   ;; Por fila: 1 = hay que copiarla a la VRAM en un proximo VBlank
+wDirtyCount:: db                  ;; Cuantas filas esperan (0 = la pantalla esta al dia)
 wResStage::   db
 wResTimer:    db                  ;; Fotogramas de espera hasta la proxima etapa
 wResSkip:     db                  ;; 1 = el jugador ha pulsado START para saltar la animacion
@@ -50,15 +52,35 @@ wResTotal:    ds SCORE_DIGITS     ;; Total mostrado (sube durante el recuento)
 SECTION "Results", ROM0
 
 ResultRows:                       ;; Filas que usa la pantalla
-   db RES_ROW_TITLE, RES_ROW_POINTS, RES_ROW_PHASES, RES_ROW_HEARTS, RES_ROW_TOTAL, RES_ROW_PRESS
+   db RES_ROW_TITLE, RES_ROW_POINTS, RES_ROW_PHASES, RES_ROW_HEARTS, RES_ROW_TOTAL, RES_ROW_RECORD, RES_ROW_PRESS
 DEF RESULT_ROW_COUNT EQU @ - ResultRows
 
 ;;-----------------------------------------------------------------
 ;; Results_Init: Descarta cualquier fila pendiente (llamar al empezar la partida)
 ;;    Destruye: A
 Results_Init::
+   ld   hl, wRowDirty
+   ld   bc, SCREEN_TILES_H
    xor  a
-   ld   [wRowPending], a
+   call MemSet
+   xor  a
+   ld   [wDirtyCount], a
+   ret
+
+;;-----------------------------------------------------------------
+;; Scr_Clear: Borra la pantalla del mapa 1 (todas las filas a negro, se vacian poco a poco en los proximos VBlank)
+;;    Destruye: A, BC, HL
+Scr_Clear::
+   ld   hl, wScrBuf
+   ld   bc, SCREEN_TILES_W * SCREEN_TILES_H
+   xor  a
+   call MemSet
+   ld   hl, wRowDirty
+   ld   bc, SCREEN_TILES_H
+   ld   a, 1
+   call MemSet
+   ld   a, SCREEN_TILES_H
+   ld   [wDirtyCount], a
    ret
 
 ;;=================================================================
@@ -163,20 +185,56 @@ Row_Clear::
    jp   MemSet
 
 ;;-----------------------------------------------------------------
-;; Row_Commit: Marca la fila como lista: se copiara a la fila A del mapa en el proximo VBlank
+;; Row_Commit: Guarda wRowBuf como la fila A de la pantalla y la marca para copiarla a la VRAM (Results_Blit, 2 filas por VBlank)
 ;;    Entrada: A = fila del mapa (0-17)
 ;;    Destruye: A
 Row_Commit::
-   ld   [wRowIdx], a
+   push bc
+   push de
+   push hl
+   ld   c, a
+   ld   l, a
+   ld   h, 0
+   add  hl, hl
+   add  hl, hl               ;; fila * 4
+   ld   d, h
+   ld   e, l
+   add  hl, hl
+   add  hl, hl               ;; fila * 16
+   add  hl, de               ;; fila * 20
+   ld   de, wScrBuf
+   add  hl, de
+   ld   d, h
+   ld   e, l                 ;; DE = fila en wScrBuf
+   ld   hl, wRowBuf
+   ld   b, SCREEN_TILES_W
+.copy:
+   ld   a, [hl+]
+   ld   [de], a
+   inc  de
+   dec  b
+   jr   nz, .copy
+   ld   hl, wRowDirty
+   ld   b, 0
+   add  hl, bc               ;; BC = fila
+   ld   a, [hl]
+   and  a
+   jr   nz, .done            ;; Ya estaba marcada
    ld   a, 1
-   ld   [wRowPending], a
+   ld   [hl], a
+   ld   hl, wDirtyCount
+   inc  [hl]
+.done:
+   pop  hl
+   pop  de
+   pop  bc
    ret
 
 ;;-----------------------------------------------------------------
 ;; Row_PutString: Escribe una cadena (acabada en TEXT_END) en la fila a partir de la columna B
 ;;    Entrada: HL = cadena, B = columna
 ;;    Destruye: A, DE, HL
-Row_PutString:
+Row_PutString::
    ld   de, wRowBuf
    ld   a, e
    add  b
@@ -218,7 +276,7 @@ Row_PutCentered::
 ;;    (la ultima cifra se escribe siempre, aunque sea 0)
 ;;    Entrada: HL = lista, B = columna
 ;;    Destruye: A, BC, DE, HL
-Row_PutDec5:
+Row_PutDec5::
    ld   de, wRowBuf
    ld   a, e
    add  b
@@ -253,32 +311,66 @@ Row_PutDec5:
    ret
 
 ;;-----------------------------------------------------------------
-;; Results_Blit: Si hay una fila preparada, la copia al mapa de fondo 1 ($9C00)
+;; Results_Blit: Copia a la VRAM (mapa de fondo 1, $9C00) hasta 2 de las filas marcadas, de arriba abajo
 ;;    IMPORTANTE: solo llamar al principio del VBlank (o con la LCD apagada)
-;;    Destruye: A, B, DE, HL
+;;    Destruye: A, BC, DE, HL
 Results_Blit::
-   ld   a, [wRowPending]
+   ld   a, [wDirtyCount]
    and  a
    ret  z
+   ld   c, 2                 ;; Filas como maximo por VBlank (el VBlank dura poco)
+   ld   hl, wRowDirty
+   ld   b, 0                 ;; B = fila que se mira
+.scan:
+   ld   a, [hl]
+   and  a
+   jr   nz, .found
+.next:
+   inc  hl
+   inc  b
+   ld   a, b
+   cp   SCREEN_TILES_H
+   jr   nz, .scan
+   ret
+.found:
    xor  a
-   ld   [wRowPending], a
-   ld   a, [wRowIdx]
-   ld   l, a
+   ld   [hl], a              ;; Fila al dia
+   push hl
+   push bc
+   ld   hl, wDirtyCount
+   dec  [hl]
+   ld   l, b                 ;; Origen: wScrBuf + fila * 20
+   ld   h, 0
+   add  hl, hl
+   add  hl, hl
+   ld   d, h
+   ld   e, l
+   add  hl, hl
+   add  hl, hl
+   add  hl, de
+   ld   de, wScrBuf
+   add  hl, de
+   push hl
+   ld   l, b                 ;; Destino: _SCRN1 + fila * 32
    ld   h, 0
    REPT 5
-      add  hl, hl            ;; Fila * 32 (cada fila del mapa tiene 32 tiles)
+      add  hl, hl
    ENDR
    ld   de, _SCRN1
    add  hl, de
-   ld   de, wRowBuf
-   ld   b, SCREEN_TILES_W
-.copy:
-   ld   a, [de]
-   inc  de
-   ld   [hl+], a
-   dec  b
-   jr   nz, .copy
-   ret
+   ld   d, h
+   ld   e, l
+   pop  hl
+   REPT SCREEN_TILES_W
+      ld   a, [hl+]
+      ld   [de], a
+      inc  de
+   ENDR
+   pop  bc
+   pop  hl
+   dec  c
+   ret  z
+   jr   .next
 
 ;;=================================================================
 ;; Logica de la pantalla
@@ -309,7 +401,7 @@ Results_Begin::
    ld   [wResTimer], a
    ld   [wResSkip], a
    ld   [wResIndex], a
-   ld   [wRowPending], a
+   call Scr_Clear            ;; La pantalla del mapa 1 puede tener el menu: se borra entera
 
    ;;-- Fases superadas: todas si se gano; si se perdio, las anteriores a la actual
    ld   a, [wEndKind]
@@ -345,10 +437,19 @@ Results_Begin::
    ld   a, [wResBonusB]
    add  a
    ld   [wResSteps], a
-   ret
+
+   ;;-- Record: el total final (puntos + bonus) se compara con el mejor guardado
+   ld   de, wScore
+   ld   hl, wFinalScore
+   ld   bc, SCORE_DIGITS
+   call MemCopy
+   ld   hl, wFinalScore
+   ld   a, [wResBonusB]
+   call Dec5_AddThousands
+   jp   Save_Update
 
 ;;-----------------------------------------------------------------
-;; Results_Update: Un fotograma de la animacion (STATE_RESULTS). Al terminar, START vuelve a la pantalla de titulo.
+;; Results_Update: Un fotograma de la animacion (STATE_RESULTS). Al terminar, START lleva a elegir el nombre (si ha entrado en la tabla) o vuelve al titulo.
 ;;    Destruye: A, BC, DE, HL
 Results_Update::
    ld   a, [wResStage]
@@ -384,6 +485,8 @@ Results_Update::
    jp   z, .total
    cp   RES_STAGE_COUNT
    jp   z, .count
+   cp   RES_STAGE_RECORD
+   jp   z, .record
    ;; RES_STAGE_PRESS
    call Row_Clear
    ld   hl, StrPress
@@ -398,6 +501,9 @@ Results_Update::
    ldh  a, [hInputNew]
    bit  BTNB_START, a
    ret  z
+   ld   a, [wNewPos]
+   cp   SCORE_SLOTS
+   jp   c, Name_Begin        ;; Ha entrado en la tabla: elige su nombre
    jp   main                 ;; Reinicio completo: el juego vuelve a la pantalla de titulo
 
 ;;-- Pasa a la siguiente etapa. Entrada: B = fotogramas de espera (con la animacion saltada, ninguno)
@@ -521,6 +627,38 @@ Results_Update::
    ret  nz                   ;; Sigue el recuento
 .countEnd:
    ld   b, 15
+   jp   .advance
+
+.record:                     ;; "NUEVO RECORD" si se ha batido, si no el record guardado
+   call Row_Clear
+   ld   a, [wNewPos]         ;; Puesto en la tabla (SCORE_SLOTS = no entra)
+   cp   SCORE_SLOTS
+   jr   nc, .oldRecord
+   and  a
+   jr   nz, .place
+   ld   hl, StrNewRecord     ;; Primero: nuevo record
+   call Row_PutCentered
+   jr   .recordRow
+.place:
+   push af
+   ld   hl, StrPlace         ;; "PUESTO n"
+   ld   b, 6
+   call Row_PutString
+   pop  af
+   add  TILE_FONT_DIGIT0 + 1
+   ld   [wRowBuf + 13], a
+   jr   .recordRow
+.oldRecord:                  ;; No entra: se muestra el mejor record
+   ld   hl, StrRecord
+   ld   b, RES_RECORD_COL
+   call Row_PutString
+   ld   hl, wScores + 3
+   ld   b, RES_RECORD_COL + 7
+   call Row_PutDec5
+.recordRow:
+   ld   a, RES_ROW_RECORD
+   call Row_Commit
+   ld   b, RES_WAIT
    jp   .advance
 
 .drawTotal:                  ;; Prepara y encola la fila del TOTAL

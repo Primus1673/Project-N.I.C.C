@@ -171,7 +171,10 @@ DEF STATE_GAMEOVER EQU 1     ;; Sin vidas: todo congelado GAMEOVER_FRAMES fotogr
 DEF STATE_FADE_OUT EQU 2     ;; Fin de fase: la pantalla se oscurece hasta el negro
 DEF STATE_INTRO    EQU 3     ;; Pantalla negra con el texto "FASE N"
 DEF STATE_FADE_IN  EQU 4     ;; La pantalla vuelve a aclararse y empieza la fase
-DEF STATE_TITLE    EQU 6     ;; Pantalla de titulo: START empieza la partida
+DEF STATE_TITLE    EQU 6     ;; Menu del titulo (JUGAR / PUNTUACIONES / CONTROLES)
+DEF STATE_SCORES   EQU 7     ;; Tabla de puntuaciones
+DEF STATE_CONTROLS EQU 8     ;; Pantalla de controles
+DEF STATE_NAME     EQU 9     ;; Eleccion del nombre (3 letras) tras entrar en la tabla
 DEF STATE_RESULTS  EQU 5     ;; Pantalla de puntuacion final (tras la ultima fase o tras perder). START reinicia
 DEF SCORE_DIGITS   EQU 5     ;; Puntuacion de 5 cifras decimales (maximo 99999, se satura)
 DEF ENEMY_NORMAL_POINTS EQU 1 ;; Puntos de la celula tipo 1, EN DECENAS (1 = 10 puntos)
@@ -224,12 +227,14 @@ ASSERT PHASE_COUNT * BONUS_PHASE_K + PLAYER_LIVES * BONUS_HEART_K <= 99   ;; (li
 ;;    La pantalla de puntuacion se dibuja en el mapa de fondo 1 ($9C00), con tiles de la fuente (src/sprites/font.z80), y se
 ;;    muestra cambiando el bit de seleccion de mapa de LCDC. Paleta invertida: el tile 0 se ve negro y las letras blancas.
 DEF BGP_RESULTS    EQU %00011011
-DEF RES_ROW_TITLE  EQU 3     ;; Fila (0-17) de cada linea
-DEF RES_ROW_POINTS EQU 6
-DEF RES_ROW_PHASES EQU 8
-DEF RES_ROW_HEARTS EQU 10
-DEF RES_ROW_TOTAL  EQU 13
+DEF RES_ROW_TITLE  EQU 2     ;; Fila (0-17) de cada linea
+DEF RES_ROW_POINTS EQU 5
+DEF RES_ROW_PHASES EQU 7
+DEF RES_ROW_HEARTS EQU 9
+DEF RES_ROW_TOTAL  EQU 12
+DEF RES_ROW_RECORD EQU 14   ;; Record (entre el TOTAL y PULSA START)
 DEF RES_ROW_PRESS  EQU 16
+DEF RES_RECORD_COL EQU 4     ;; Columna de "RECORD" (las 5 cifras van 7 columnas mas alla)
 DEF RES_LABEL_COL  EQU 2     ;; Columna donde empieza cada etiqueta
 DEF RES_VALUE_COL  EQU 13    ;; Columna de la primera cifra de cada valor (5 cifras: columnas 13 a 17)
 DEF RES_WAIT       EQU 30    ;; Fotogramas entre una linea y la siguiente (0,5 s)
@@ -237,8 +242,24 @@ DEF RES_WAIT       EQU 30    ;; Fotogramas entre una linea y la siguiente (0,5 s
 ENDC
 
 ;;--------------------------------------
-;;-- Pantalla de titulo (title.asm): se dibuja en el mapa de fondo 1, igual que la de puntuacion
-DEF TITLE_ROW1     EQU 4     ;; Fila donde empieza "PROJECT" (ocupa 2 filas)
-DEF TITLE_ROW2     EQU 7     ;; Fila donde empieza "N.I.C.C" (ocupa 2 filas)
-DEF TITLE_ROW_PRESS EQU 14   ;; Fila de "PULSA START"
-DEF TITLE_BLINK    EQU 30    ;; Fotogramas que "PULSA START" esta visible / oculto (0,5 s)
+;;-- Pantalla de titulo, tabla de puntuaciones y eleccion de nombre (title.asm, save.asm). Todo va en el mapa de fondo 1.
+DEF TITLE_ROW1     EQU 3     ;; Fila donde empieza "PROJECT" (ocupa 2 filas)
+DEF TITLE_ROW2     EQU 6     ;; Fila donde empieza "N.I.C.C" (ocupa 2 filas)
+DEF MENU_ROW0      EQU 11    ;; Fila de la primera opcion del menu (una opcion cada 2 filas)
+DEF MENU_CURSOR_COL EQU 3    ;; Columna de la flecha que marca la opcion elegida
+DEF MENU_TEXT_COL  EQU 5     ;; Columna del texto de las opciones
+DEF TILE_ARROW     EQU TILE_TITLE + 38   ;; Flecha ">" (tile de titulo.z80)
+DEF TILE_DASH      EQU TILE_TITLE + 39   ;; Guion "-" (tile de titulo.z80)
+DEF SCORE_SLOTS    EQU 8     ;; Puntuaciones que guarda la tabla
+DEF SCORE_ENTRY_SIZE EQU 8   ;; Cada una: 3 letras del nombre (0 = A ... 25 = Z) + 5 cifras de la puntuacion
+DEF NAME_LETTERS   EQU 26
+DEF SCORES_ROW_TITLE EQU 1
+DEF SCORES_ROW0    EQU 4     ;; Fila de la primera puntuacion (una por fila)
+DEF SCORES_ROW_PRESS EQU 15
+DEF SCORES_MARK_COL EQU 2    ;; Flecha que marca tu puntuacion
+DEF SCORES_POS_COL EQU 4     ;; Numero de puesto
+DEF SCORES_NAME_COL EQU 6    ;; Nombre
+DEF SCORES_VALUE_COL EQU 11  ;; Primera de las 5 cifras
+DEF NAME_ROW       EQU 9     ;; Fila de "NOMBRE" y las 3 letras (columnas NAME_COL, +2, +4)
+DEF NAME_COL       EQU 11
+DEF NAME_BLINK     EQU 20    ;; Fotogramas que la letra elegida esta visible / oculta

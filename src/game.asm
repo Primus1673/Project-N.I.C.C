@@ -102,9 +102,9 @@ Game_Update::
    jp   z, .fadeIn
    cp   STATE_GAMEOVER
    jr   z, .gameOver
-   cp   STATE_TITLE
-   jp   z, Title_Update
-   jp   Results_Update       ;; STATE_RESULTS
+   cp   STATE_RESULTS
+   jp   z, Results_Update
+   jp   Menu_Update          ;; STATE_TITLE, STATE_SCORES, STATE_CONTROLS y STATE_NAME (title.asm)
 
 .gameOver:                   ;; Todo congelado un momento (START lo salta) y luego fundido a la pantalla de puntuacion
    ld   a, [wStateTimer]
@@ -266,7 +266,7 @@ Game_Draw::
    cp   STATE_RESULTS
    jp   z, Sprites_Clear     ;; La puntuacion se dibuja en el fondo: ningun sprite
    cp   STATE_TITLE
-   jp   z, Sprites_Clear     ;; El titulo tambien
+   jp   nc, Sprites_Clear    ;; El titulo, las puntuaciones, los controles y el nombre tambien (estados >= STATE_TITLE)
    call Player_Draw
    call Bullets_Draw
    jp   Enemies_Draw
