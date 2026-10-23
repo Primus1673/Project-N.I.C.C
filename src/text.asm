@@ -46,9 +46,6 @@ StrPlace::   db "PUESTO", TEXT_END
 StrName::    db "NOMBRE", TEXT_END
 StrPlay::    db "JUGAR", TEXT_END
 StrScores::  db "PUNTUACIONES", TEXT_END
-StrNameHelp1:: db "ARRIBA ABAJO  LETRA", TEXT_END
-StrNameHelp2:: db "IZQ DER  POSICION", TEXT_END
-StrNameHelp3:: db "A  ACEPTAR", TEXT_END
 
 
 ;;-----------------------------------------------------------------

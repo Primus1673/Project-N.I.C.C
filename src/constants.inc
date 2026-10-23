@@ -71,6 +71,8 @@ DEF TILE_TITLE     EQU 72  ;; Letras grandes del titulo: 38 tiles (P,R,O,J,E,C,T
 
 DEF TILE_EXPL      EQU 112 ;; Explosion: 3 tiles seguidos de src/sprites/explosion.z80
 
+DEF TILE_WARN      EQU 115 ;; Flechas del aviso de entrada: 4 tiles de src/sprites/aviso.z80, en el orden DIR_UP, DIR_DOWN, DIR_LEFT, DIR_RIGHT
+
 DEF TILE_FONT_DIGIT0 EQU TILE_FONT        ;; Digito N = TILE_FONT_DIGIT0 + N
 DEF TILE_FONT_A    EQU TILE_FONT + 10     ;; Letra A (la B es la siguiente...)
 
@@ -150,6 +152,8 @@ DEF AGGR_OFFSET    EQU (ENEMY_AGGR_HP - 1) * TILE_SIZE   ;; Zona de aparicion es
 ;;    Limite de sprites: la OAM admite 40. Nave (1) + balas (MAX_BULLETS) + enemigos. Una celula grande a 3x3 gasta 9 sprites.
 ASSERT MAX_BIG * 9 + MAX_AGGR * 4 + (MAX_ENEMIES - MAX_BIG - MAX_AGGR) <= MAX_SPRITES - SPR_SLOT_ENEMIES
 
+DEF WARN_FRAMES    EQU 48   ;; Aviso antes de que entre una celula grande o agresiva: una flecha parpadea en el marco (0,8 s)
+DEF WARN_BLINK_BIT EQU 2    ;; La flecha se ve cuando este bit del contador esta a 1: parpadea cada 4 fotogramas
 DEF MAX_EXPLOSIONS EQU 3    ;; Explosiones a la vez (1 sprite cada una)
 DEF EXPL_SIZE      EQU 3    ;; [fotogramas que quedan, X, Y]
 DEF EXPL_FRAMES    EQU 12   ;; Duracion de una explosion (3 dibujos de 4 fotogramas)
@@ -269,6 +273,8 @@ DEF SCORES_MARK_COL EQU 2    ;; Flecha que marca tu puntuacion
 DEF SCORES_POS_COL EQU 4     ;; Numero de puesto
 DEF SCORES_NAME_COL EQU 6    ;; Nombre
 DEF SCORES_VALUE_COL EQU 11  ;; Primera de las 5 cifras
-DEF NAME_ROW       EQU 9     ;; Fila de "NOMBRE" y las 3 letras (columnas NAME_COL, +2, +4)
+DEF NAME_ROW_TITLE EQU 5     ;; Pantalla de nombre: fila de "NUEVO RECORD" / "PUESTO n"
+DEF NAME_ROW_POINTS EQU 8    ;; ... de los puntos
+DEF NAME_ROW       EQU 11    ;; Fila de "NOMBRE" y las 3 letras (columnas NAME_COL, +2, +4)
 DEF NAME_COL       EQU 11
 DEF NAME_BLINK     EQU 20    ;; Fotogramas que la letra elegida esta visible / oculta

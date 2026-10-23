@@ -36,6 +36,12 @@ wChDX:         db                            ;; Persecucion: distancia en X hast
 wChDY:         db                            ;; ... distancia en Y
 wChDirX:       db                            ;; ... DIR_LEFT o DIR_RIGHT
 wChDirY:       db                            ;; ... DIR_UP o DIR_DOWN
+wWarnTimer::   db                            ;; Fotogramas que faltan para que entre la celula avisada (0 = no hay ninguna avisada)
+wWarnType:     db                            ;; La celula avisada, ya preparada: [tipo, direccion, X, Y, vida] (como en wEnemies)
+wWarnDir:      db
+wWarnX:        db
+wWarnY:        db
+wWarnHp:       db
 wDrawType:     db                            ;; Enemies_Draw: tipo de la celula actual
 ;;    Variables de trabajo
 wMoveNow:      db                            ;; Bit 1: las celulas normales se mueven en este fotograma; bit 0: las grandes
@@ -58,6 +64,8 @@ Enemies_Init::
    call MemSet
    ld   a, ENEMY_SPAWN_FIRST
    ld   [wSpawnTimer], a
+   xor  a
+   ld   [wWarnTimer], a         ;; Sin celula avisada
    ret
 
 ;;-----------------------------------------------------------------
@@ -189,6 +197,9 @@ Random_PlayY:
 ;;    Salida: A = tipo; wSpawnOff queda en 0, BIG_OFFSET o AGGR_OFFSET
 ;;    Destruye: A, B, C, D, HL
 Enemies_ChooseType:
+   ld   a, [wWarnTimer]
+   and  a
+   jr   nz, .normal             ;; Ya hay una celula grande/agresiva avisada: esta sale normal
    ld   b, 100
    call Random_Range            ;; A = 0..99
    ld   [wSpawnRoll], a
@@ -310,6 +321,50 @@ Enemies_Spawn:
    ld   a, ENEMY_NORMAL_HP
 .storeHp:
    ld   [hl], a                 ;; Vida (= tamaño en tiles)
+   ;; Las celulas grandes y agresivas no entran de golpe: antes parpadea una flecha en el marco (ver Enemies_Activate)
+   ld   a, [wSpawnType]
+   cp   ENEMY_NORMAL
+   ret  z
+   ld   de, wWarnType + ENEMY_SIZE - 1
+   ld   b, ENEMY_SIZE
+.stash:                         ;; Copia la celula (de atras adelante) a wWarnType y libera su hueco
+   ld   a, [hl-]
+   ld   [de], a
+   dec  de
+   dec  b
+   jr   nz, .stash
+   inc  hl                      ;; HL -> inicio del hueco
+   xor  a
+   ld   [hl], a                 ;; Hueco libre otra vez
+   ld   a, WARN_FRAMES
+   ld   [wWarnTimer], a
+   ret
+
+;;-----------------------------------------------------------------
+;; Enemies_Activate: Acaba el aviso: la celula guardada en wWarnType entra de verdad en un hueco libre (si no hay, se pierde)
+;;    Destruye: A, BC, DE, HL
+Enemies_Activate:
+   ld   hl, wEnemies
+   ld   b, MAX_ENEMIES
+.find:
+   ld   a, [hl]
+   and  a
+   jr   z, .free
+   REPT ENEMY_SIZE
+      inc  hl
+   ENDR
+   dec  b
+   jr   nz, .find
+   ret
+.free:
+   ld   de, wWarnType
+   ld   b, ENEMY_SIZE
+.copy:
+   ld   a, [de]
+   inc  de
+   ld   [hl+], a
+   dec  b
+   jr   nz, .copy
    ret
 
 ;;-----------------------------------------------------------------
@@ -707,6 +762,15 @@ Enemies_CheckPlayer:
 ;; Enemies_Update: Un fotograma de enemigos: nuevas apariciones, movimiento y choques con las balas y el jugador
 ;;    Destruye: A, BC, DE, HL
 Enemies_Update::
+   ;;--------------------------------------
+   ;;-- Aviso: cuando acaba la cuenta atras, la celula grande/agresiva avisada entra
+   ld   a, [wWarnTimer]
+   and  a
+   jr   z, .noWarn
+   dec  a
+   ld   [wWarnTimer], a
+   call z, Enemies_Activate
+.noWarn:
    ;;--------------------------------------
    ;;-- Aparicion: cuando el temporizador llega a 0 sale una celula y se programa la siguiente
    ld   a, [wSpawnTimer]

@@ -343,7 +343,7 @@ Name_Begin::
    add  TILE_FONT_DIGIT0 + 1
    ld   [wRowBuf + 13], a
 .titleRow:
-   ld   a, RES_ROW_TITLE
+   ld   a, NAME_ROW_TITLE
    call Row_Commit
    call Row_Clear            ;; Puntos
    ld   hl, StrPoints
@@ -352,11 +352,8 @@ Name_Begin::
    ld   hl, wFinalScore
    ld   b, RES_VALUE_COL
    call Row_PutDec5
-   ld   a, RES_ROW_POINTS + 1
+   ld   a, NAME_ROW_POINTS
    call Row_Commit
-   CenteredRow StrNameHelp1, 12
-   CenteredRow StrNameHelp2, 14
-   CenteredRow StrNameHelp3, 16
    ;; sigue en Name_DrawRow
 
 ;;-----------------------------------------------------------------

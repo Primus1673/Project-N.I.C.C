@@ -83,6 +83,7 @@ Explo_Update::
 ;;    Entrada: DE = siguiente sprite libre de la OAM en sombra (lo deja Enemies_Draw)
 ;;    Destruye: A, BC, DE, HL
 Explo_Draw::
+   call Warn_Draw
    ld   hl, wExplosions
    ld   a, MAX_EXPLOSIONS
    ld   [wExploLeft], a
@@ -120,3 +121,58 @@ Explo_Draw::
    ld   [de], a
    inc  de
    jr   .hide
+
+;;-----------------------------------------------------------------
+;; Warn_Draw: Dibuja la flecha del aviso de entrada (si hay una celula avisada y toca verse): pegada al marco por dentro, en el punto por el
+;;    que va a entrar y apuntando hacia dentro (sobre el fondo claro se ve mejor que sobre el marco). Se dibuja antes que las explosiones.
+;;    Entrada: DE = siguiente sprite libre     Salida: DE avanza     Destruye: A, BC, HL
+Warn_Draw:
+   ld   a, [wWarnTimer]
+   and  a
+   ret  z                       ;; Ninguna avisada
+   bit  WARN_BLINK_BIT, a
+   ret  z                       ;; Parte oculta del parpadeo
+   ld   a, [wWarnHp]
+   dec  a
+   add  a
+   add  a
+   add  a
+   srl  a                       ;; 4 * (tamaño - 1): desplazamiento hasta el centro de la celula (menos medio sprite)
+   ld   l, a                    ;; L = desplazamiento
+   ld   a, [wWarnDir]
+   ld   h, a                    ;; H = direccion de entrada
+   ld   a, [wWarnX]
+   ld   b, a
+   ld   a, [wWarnY]
+   ld   c, a
+   ld   a, h
+   cp   DIR_RIGHT
+   jr   z, .fromLeft
+   cp   DIR_LEFT
+   jr   z, .fromRight
+   ;; Entra por arriba o por abajo: la flecha va en X = centro de la celula
+   ld   a, b
+   add  l
+   ld   b, a
+   ld   c, PLAY_MIN_Y           ;; Borde superior de la zona de juego
+   ld   a, h
+   cp   DIR_DOWN
+   jr   z, .draw
+   ld   c, PLAY_MAX_Y           ;; Borde inferior
+   jr   .draw
+.fromLeft:
+   ld   a, c
+   add  l
+   ld   c, a
+   ld   b, PLAY_MIN_X           ;; Borde izquierdo
+   jr   .draw
+.fromRight:
+   ld   a, c
+   add  l
+   ld   c, a
+   ld   b, PLAY_MAX_X           ;; Borde derecho
+.draw:
+   ld   a, h
+   dec  a
+   add  TILE_WARN               ;; DIR_UP=1, DOWN=2, LEFT=3, RIGHT=4 -> tiles en ese orden
+   jp   Put_Sprite
