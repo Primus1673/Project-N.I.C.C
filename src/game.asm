@@ -28,6 +28,7 @@ SECTION "Game", ROM0
 Game_Start::
    call Player_Init
    call Results_Init
+   call Energy_Init          ;; Barra de energia vacia, sin misiles
    xor  a
    ld   [wEndKind], a        ;; La partida sigue
    ld   [wResultsView], a    ;; Se vuelve al mapa de fondo del juego
@@ -54,6 +55,7 @@ Game_BeginPhase:
    call Bullets_Init
    call Enemies_Init
    call Explo_Init
+   call Drops_Init
    ld   a, [wPhase]
    dec  a
    call Enemies_SetPhase
@@ -141,11 +143,14 @@ Game_Update::
    ld   a, STATE_PAUSED      ;; START: pausa (el juego sigue a la vista, congelado)
    ld   [wGameState], a
    ret
+   ;; (la pausa no avanza nada)
 .noPause:
+   call Energy_Update        ;; SELECT activa los misiles; la barra se vacia con ellos
    call Player_Update
    call Bullets_Update
    call Enemies_Update       ;; Incluye los choques con el jugador (Game_PlayerHit)
    call Explo_Update
+   call Drops_Update
    ld   a, [wGameState]
    cp   STATE_PLAYING
    ret  nz                   ;; Ha perdido la ultima vida en este fotograma

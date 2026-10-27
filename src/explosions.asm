@@ -84,6 +84,7 @@ Explo_Update::
 ;;    Destruye: A, BC, DE, HL
 Explo_Draw::
    call Warn_Draw
+   call Drops_Draw
    ld   hl, wExplosions
    ld   a, MAX_EXPLOSIONS
    ld   [wExploLeft], a

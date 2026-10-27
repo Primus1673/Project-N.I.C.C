@@ -73,6 +73,11 @@ DEF TILE_EXPL      EQU 112 ;; Explosion: 3 tiles seguidos de src/sprites/explosi
 
 DEF TILE_WARN      EQU 115 ;; Flechas del aviso de entrada: 4 tiles de src/sprites/aviso.z80, en el orden DIR_UP, DIR_DOWN, DIR_LEFT, DIR_RIGHT
 
+DEF TILE_MISSILE_V EQU 119 ;; Misil vertical (apunta arriba; con Y invertida, abajo): primer tile de src/sprites/energia.z80
+DEF TILE_MISSILE_H EQU 120 ;; Misil horizontal (apunta a la derecha; con X invertida, a la izquierda)
+DEF TILE_DROP      EQU 121 ;; Gota de energia
+DEF TILE_BAR       EQU 122 ;; Barra de energia del HUD: 9 tiles seguidos, con 0 a 8 pixeles rellenos
+
 DEF TILE_FONT_DIGIT0 EQU TILE_FONT        ;; Digito N = TILE_FONT_DIGIT0 + N
 DEF TILE_FONT_A    EQU TILE_FONT + 10     ;; Letra A (la B es la siguiente...)
 
@@ -154,6 +159,30 @@ ASSERT MAX_BIG * 9 + MAX_AGGR * 4 + (MAX_ENEMIES - MAX_BIG - MAX_AGGR) <= MAX_SP
 
 DEF WARN_FRAMES    EQU 48   ;; Aviso antes de que entre una celula grande o agresiva: una flecha parpadea en el marco (0,8 s)
 DEF WARN_BLINK_BIT EQU 2    ;; La flecha se ve cuando este bit del contador esta a 1: parpadea cada 4 fotogramas
+
+;;--------------------------------------
+;;-- Energia celular, gotas y misiles (energy.asm, bullets.asm)
+;;    Algunas celulas sueltan una gota al morir (DROP_PERCENT %). La gota cae y, si el jugador la toca, rellena la barra de
+;;    energia (ENERGY_PER_DROP pixeles de ENERGY_MAX). Con la barra llena, SELECT activa el modo misiles: A y B disparan misiles
+;;    guiados en vez de balas, y la barra se vacia sola (1 pixel cada ENERGY_DRAIN_FRAMES fotogramas = 8 s en total).
+DEF ENERGY_MAX      EQU 40   ;; Barra llena: 5 tiles de 8 pixeles
+DEF ENERGY_PER_DROP EQU 5    ;; Cada gota: 1/8 de la barra
+DEF ENERGY_DRAIN_FRAMES EQU 12   ;; Con el modo misiles activo, la barra baja 1 pixel cada 12 fotogramas: 40 * 12 = 480 = 8 s
+DEF DROP_PERCENT    EQU 20   ;; Probabilidad (0-100) de que una celula suelte una gota al morir
+DEF MAX_DROPS       EQU 3    ;; Gotas a la vez (1 sprite cada una)
+DEF DROP_SIZE       EQU 3    ;; [activa, X, Y]
+DEF DROP_SLOW       EQU 3    ;; La gota baja 1 pixel cada DROP_SLOW fotogramas
+DEF DROP_REACH      EQU 6    ;; Distancia maxima (pixeles, por eje) entre la gota y el jugador para recogerla
+DEF HUD_BAR_COL     EQU 4    ;; Columna del primer tile de la barra del HUD (ocupa 5)
+DEF HUD_BAR_TILES   EQU 5
+ASSERT ENERGY_MAX == HUD_BAR_TILES * TILE_SIZE
+ASSERT HUD_BAR_COL + HUD_BAR_TILES <= HUD_COMBO_COL
+DEF MISSILE_FLAG    EQU $80  ;; En la direccion de una bala: bit 7 = es un misil (los bits 0-2 son hacia donde apunta)
+DEF MISSILE_SPEED   EQU 2    ;; Pixeles por fotograma (las balas van a 1)
+DEF MISSILE_COOLDOWN EQU 30  ;; Recarga por boton en modo misiles (0,5 s)
+DEF OAM_XFLIP       EQU $20
+DEF OAM_YFLIP       EQU $40
+
 DEF MAX_EXPLOSIONS EQU 3    ;; Explosiones a la vez (1 sprite cada una)
 DEF EXPL_SIZE      EQU 3    ;; [fotogramas que quedan, X, Y]
 DEF EXPL_FRAMES    EQU 12   ;; Duracion de una explosion (3 dibujos de 4 fotogramas)

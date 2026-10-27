@@ -42,6 +42,8 @@ wWarnDir:      db
 wWarnX:        db
 wWarnY:        db
 wWarnHp:       db
+wHitMissile:  db                            ;; Enemies_CheckBullets: $80 si el impacto es de un misil
+wHitSize:      db                            ;; ... tamaño en tiles de la celula antes del impacto
 wDrawType:     db                            ;; Enemies_Draw: tipo de la celula actual
 ;;    Variables de trabajo
 wMoveNow:      db                            ;; Bit 1: las celulas normales se mueven en este fotograma; bit 0: las grandes
@@ -664,12 +666,22 @@ Enemies_CheckBullets:
    dec  de                      ;; (dec de no toca los flags)
    jr   nc, .nextBullet         ;; No chocan
    ;; --- La bala ha tocado a la celula ---
+   ld   a, [de]
+   and  MISSILE_FLAG
+   ld   [wHitMissile], a        ;; $80 si era un misil (mata de un golpe a cualquier celula)
    xor  a
    ld   [de], a                 ;; La bala desaparece
    push hl
    REPT ENEMY_SIZE - 1
       inc  hl                   ;; HL -> vida de la celula (ultimo byte)
    ENDR
+   ld   a, [hl]
+   ld   [wHitSize], a           ;; Tamaño antes del impacto
+   ld   a, [wHitMissile]
+   and  a
+   jr   z, .normalHit
+   ld   [hl], 1                 ;; Misil: la vida baja a 1 y el impacto la deja en 0
+.normalHit:
    dec  [hl]                    ;; Le quitamos 1 de vida
    pop  hl                      ;; (pop no modifica los flags: sigue valiendo el resultado de dec)
    jr   nz, .survived           ;; Aun le queda vida
@@ -688,12 +700,20 @@ Enemies_CheckBullets:
    push bc
    push hl
    inc  hl
-   inc  hl                      ;; HL -> X (la celula que muere es siempre de 1x1: la explosion va en su sitio)
+   inc  hl                      ;; HL -> X
+   ld   a, [wHitSize]
+   dec  a
+   add  a
+   add  a
+   ld   e, a                    ;; E = 4 * (tamaño - 1): del extremo de la celula a su centro (con un misil puede morir una grande)
    ld   a, [hl+]
-   ld   b, a
+   add  e
+   ld   b, a                    ;; B = X del sprite centrado en la celula
    ld   a, [hl]
+   add  e
    ld   c, a
    call Explo_Spawn
+   call Drop_Roll               ;; Con probabilidad DROP_PERCENT suelta una gota de energia
    pop  hl
    pop  bc
    xor  a
