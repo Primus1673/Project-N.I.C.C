@@ -20,7 +20,7 @@ include cfg/projectpaths.mk   # Local paths and files for the project
 
 ##-----------------------------------------
 ## Project general configuration
-PRJNAME  :=game
+PRJNAME  :=nicc
 PAD      :=0xFF
 INCLUDE  :=-Isrc
 ASMFLAGS :=-E -Weverything

@@ -66,7 +66,8 @@ TitleWord2: db 7, TITLE_DOT, 8, TITLE_DOT, 5, TITLE_DOT, 5, TEXT_END  ;; N.I.C.C
 ;; TitleWordRows palabra, columna, fila: dibuja las 2 filas de una palabra grande
 MACRO TitleWordRows
    FOR _h, 2
-      call Row_Clear
+      ld   a, \3 + _h
+      call Row_ClearBg
       ld   hl, \1
       ld   de, wRowBuf + \2
       ld   b, _h
@@ -78,7 +79,8 @@ ENDM
 
 ;; MenuOption indice, texto, fila: dibuja una opcion del menu (con la flecha si es la elegida)
 MACRO MenuOption
-   call Row_Clear
+   ld   a, \3
+   call Row_ClearBg
    ld   a, [wMenuSel]
    cp   \1
    jr   nz, .noCursor\@
@@ -100,6 +102,33 @@ MACRO CenteredRow
    ld   a, \2
    call Row_Commit
 ENDM
+
+;;-----------------------------------------------------------------
+;; Row_ClearBg: Rellena wRowBuf con la fila A del fondo decorativo del titulo (TitleBg, en titlebg.asm) en vez de en blanco
+;;    Entrada: A = fila (0-17)     Conserva: BC     Destruye: A, DE, HL
+Row_ClearBg:
+   push bc
+   ld   l, a
+   ld   h, 0
+   add  hl, hl
+   add  hl, hl               ;; fila * 4
+   ld   d, h
+   ld   e, l
+   add  hl, hl
+   add  hl, hl               ;; fila * 16
+   add  hl, de               ;; fila * 20
+   ld   de, TitleBg
+   add  hl, de
+   ld   de, wRowBuf
+   ld   b, SCREEN_TILES_W
+.copy:
+   ld   a, [hl+]
+   ld   [de], a
+   inc  de
+   dec  b
+   jr   nz, .copy
+   pop  bc
+   ret
 
 ;;-----------------------------------------------------------------
 ;; Screen_Enter: Empieza una pantalla nueva: cambia de estado, activa el fondo del mapa 1 y lo borra
@@ -139,6 +168,16 @@ Title_Begin::
 Menu_Show:
    ld   a, STATE_TITLE
    call Screen_Enter
+   ld   b, 0                 ;; Primero todo el fondo decorativo (celulas), fila a fila; luego el titulo y las opciones encima
+.bg:
+   ld   a, b
+   call Row_ClearBg
+   ld   a, b
+   call Row_Commit
+   inc  b
+   ld   a, b
+   cp   SCREEN_TILES_H
+   jr   nz, .bg
    TitleWordRows TitleWord1, 3, TITLE_ROW1
    TitleWordRows TitleWord2, 5, TITLE_ROW2
    ;; sigue en Menu_PaintOptions

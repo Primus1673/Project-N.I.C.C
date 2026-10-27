@@ -77,6 +77,7 @@ DEF TILE_MISSILE_V EQU 119 ;; Misil vertical (apunta arriba; con Y invertida, ab
 DEF TILE_MISSILE_H EQU 120 ;; Misil horizontal (apunta a la derecha; con X invertida, a la izquierda)
 DEF TILE_DROP      EQU 121 ;; Gota de energia
 DEF TILE_BAR       EQU 122 ;; Barra de energia del HUD: 9 tiles seguidos, con 0 a 8 pixeles rellenos
+DEF TILE_VIRUS     EQU 131 ;; Virus del fondo del titulo: 36 tiles seguidos (por filas) de src/sprites/virus.z80, a 6x6
 
 DEF TILE_FONT_DIGIT0 EQU TILE_FONT        ;; Digito N = TILE_FONT_DIGIT0 + N
 DEF TILE_FONT_A    EQU TILE_FONT + 10     ;; Letra A (la B es la siguiente...)
