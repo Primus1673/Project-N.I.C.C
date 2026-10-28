@@ -18,6 +18,8 @@ wFadeLevel:   db                ;; Oscurecimiento de la pantalla: 0 normal ... F
 wStateTimer:  db                ;; Cuenta atras de los estados de transicion
 wEndKind::    db                ;; END_NONE, END_WIN (todas las fases superadas) o END_LOSE (sin vidas)
 wFlash:       db                ;; Fotogramas que le quedan al destello de pantalla (golpe al jugador o cambio de fase)
+wPhaseSec:    db                ;; Segundos que quedan de la fase (el cronometro del HUD)
+wSecFrames:   db                ;; Fotogramas que faltan para el siguiente segundo
 wBreak:       db                ;; Cambio de fase en pantalla de juego: fotogramas que quedan del mensaje (0 = no hay cambio de fase)
 wResultsView: db                ;; 1 = se muestra la pantalla de puntuacion (mapa de fondo 1 y paleta invertida)
 
@@ -65,6 +67,7 @@ Game_BeginPhase:
    ld   [wPhaseTimerLo], a
    ld   a, HIGH(PHASE_FRAMES)
    ld   [wPhaseTimerHi], a
+   call Phase_ResetClock
    xor  a
    ld   [wInvuln], a
    ld   a, FADE_BLACK
@@ -74,6 +77,18 @@ Game_BeginPhase:
    ld   a, STATE_INTRO
    ld   [wGameState], a
    jp   Sprites_Clear
+
+;;-----------------------------------------------------------------
+;; Phase_ResetClock: El cronometro del HUD vuelve a PHASE_SECONDS (principio de una fase)
+;;    Destruye: A
+Phase_ResetClock:
+   ld   a, PHASE_SECONDS
+   ld   [wPhaseSec], a
+   ld   a, 60
+   ld   [wSecFrames], a
+   ld   a, 1
+   ld   [wHudDirty], a
+   ret
 
 ;;-----------------------------------------------------------------
 ;; Break_Start: Fin de una fase que no es la ultima: sin cortar la partida, las celulas explotan, dejan de salir y durante
@@ -91,6 +106,7 @@ Break_Start:
    ld   [wPhaseTimerLo], a
    ld   a, HIGH(PHASE_FRAMES)
    ld   [wPhaseTimerHi], a
+   call Phase_ResetClock
    call Enemies_Wipe
    ld   a, BREAK_FRAMES
    ld   [wBreak], a
@@ -168,7 +184,7 @@ Game_Update::
 .endFade:
    ld   a, END_LOSE
    ld   [wEndKind], a
-   jr   .startFade
+   jp   .startFade
 
 .paused:                     ;; Todo congelado: solo se espera START
    ldh  a, [hInputNew]
@@ -214,6 +230,30 @@ Game_Update::
    ld   a, [wBreak]
    and  a
    ret  nz
+   ;; Cronometro del HUD: un segundo cada 60 fotogramas; avisa al HUD al cambiar de segundo y, con poco tiempo, cada medio segundo
+   ld   hl, wSecFrames
+   dec  [hl]
+   jr   nz, .secMid
+   ld   [hl], 60
+   ld   a, [wPhaseSec]
+   and  a
+   jr   z, .secDirty
+   dec  a
+   ld   [wPhaseSec], a
+.secDirty:
+   ld   a, 1
+   ld   [wHudDirty], a
+   jr   .secDone
+.secMid:
+   ld   a, [hl]
+   cp   29                   ;; (el HUD se dibuja en el VBlank siguiente, ya con 29 o menos: mitad oculta)
+   jr   nz, .secDone
+   ld   a, [wPhaseSec]
+   cp   TIME_BLINK_SEC + 1
+   jr   nc, .secDone
+   ld   a, 1
+   ld   [wHudDirty], a       ;; Empieza la mitad oculta del parpadeo
+.secDone:
    ld   a, [wPhaseTimerLo]
    ld   l, a
    ld   a, [wPhaseTimerHi]

@@ -1,7 +1,7 @@
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 ;; hud.asm : HUD (vidas y puntuacion) dibujado con tiles del fondo en la fila superior del marco
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
-;; Corazones a la izquierda (uno por vida posible: llenos = vidas que quedan), la barra de energia, el multiplicador de combo ("X3") en el centro
+;; Corazones a la izquierda (uno por vida posible: llenos = vidas que quedan), la barra de energia, el multiplicador de combo ("X3"), el cronometro de la fase
 ;; y 5 cifras de puntuacion a la derecha.
 ;; Solo se escribe en la VRAM cuando algo ha cambiado (wHudDirty), y siempre al empezar el VBlank (o con la LCD apagada).
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
@@ -95,6 +95,39 @@ Hud_Update::
    ld   [hl+], a
    ld   [hl], a
 .comboDone:
+
+   ;;--------------------------------------
+   ;;-- Cronometro de la fase: segundos que quedan, 2 cifras. Con TIME_BLINK_SEC o menos solo se ve la primera mitad de cada segundo.
+   ld   hl, _SCRN0 + HUD_TIME_COL
+   ld   a, [wPhaseSec]
+   cp   TIME_BLINK_SEC + 1
+   jr   nc, .timeShow
+   ld   a, [wSecFrames]
+   cp   30
+   jr   c, .timeHide
+.timeShow:
+   ld   a, [wPhaseSec]
+   ld   b, 0                    ;; B = decenas
+.tens:
+   cp   10
+   jr   c, .tensDone
+   sub  10
+   inc  b
+   jr   .tens
+.tensDone:
+   ld   c, a                    ;; C = unidades
+   ld   a, b
+   add  TILE_DIGIT0
+   ld   [hl+], a
+   ld   a, c
+   add  TILE_DIGIT0
+   ld   [hl], a
+   jr   .timeDone
+.timeHide:
+   ld   a, TILE_BORDER
+   ld   [hl+], a
+   ld   [hl], a
+.timeDone:
 
    ;;--------------------------------------
    ;;-- Puntuacion: una cifra por tile

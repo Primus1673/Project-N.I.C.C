@@ -174,7 +174,7 @@ DEF MAX_DROPS       EQU 3    ;; Gotas a la vez (1 sprite cada una)
 DEF DROP_SIZE       EQU 3    ;; [activa, X, Y]
 DEF DROP_SLOW       EQU 3    ;; La gota baja 1 pixel cada DROP_SLOW fotogramas
 DEF DROP_REACH      EQU 6    ;; Distancia maxima (pixeles, por eje) entre la gota y el jugador para recogerla
-DEF HUD_BAR_COL     EQU 4    ;; Columna del primer tile de la barra del HUD (ocupa 5)
+DEF HUD_BAR_COL     EQU 3    ;; Columna del primer tile de la barra del HUD (ocupa 5)
 DEF HUD_BAR_TILES   EQU 5
 ASSERT ENERGY_MAX == HUD_BAR_TILES * TILE_SIZE
 ASSERT HUD_BAR_COL + HUD_BAR_TILES <= HUD_COMBO_COL
@@ -226,9 +226,10 @@ DEF ENEMY_AGGR_POINTS   EQU 3 ;; Puntos de la celula agresiva, en decenas (30 pu
 
 ;;--------------------------------------
 ;;-- HUD: ocupa la fila superior del marco (fila 0 del mapa de fondo)
-DEF HUD_HEARTS_COL EQU 1                                  ;; Columna del primer corazon (ocupan 3 columnas)
+DEF HUD_HEARTS_COL EQU 0                                  ;; Columna del primer corazon (ocupan 3 columnas)
 DEF HUD_SCORE_COL  EQU SCREEN_TILES_W - 1 - SCORE_DIGITS  ;; Columna de la primera cifra (la ultima queda junto al marco derecho)
-DEF HUD_COMBO_COL  EQU 9                                  ;; Columna de la "X" del multiplicador (la cifra va en la siguiente)
+DEF HUD_TIME_COL   EQU 11                                 ;; Columna de la primera cifra del tiempo que queda de la fase (2 cifras: 60 -> 00)
+DEF HUD_COMBO_COL  EQU 8                                  ;; Columna de la "X" del multiplicador (la cifra va en la siguiente)
 
 ;;--------------------------------------
 ;;-- Combo: bajas seguidas con multiplicador de puntos
@@ -244,7 +245,10 @@ DEF COMBO_BLINK_MIN   EQU 2    ;; Semiperiodo minimo del parpadeo (fotogramas)
 ;;--------------------------------------
 ;;-- Fases (niveles). La partida dura PHASE_COUNT fases de PHASE_FRAMES fotogramas cada una
 DEF PHASE_COUNT    EQU 5
+DEF PHASE_SECONDS  EQU 60     ;; Segundos que dura cada fase (lo que muestra el cronometro del HUD)
 DEF PHASE_FRAMES   EQU 3600  ;; 60 fotogramas/s * 60 s = 1 minuto por fase (la Game Boy real va a 59,7 fps: 60,3 s)
+ASSERT PHASE_FRAMES == PHASE_SECONDS * 60
+DEF TIME_BLINK_SEC  EQU 10   ;; Con estos segundos o menos, el cronometro parpadea (visible la primera mitad de cada segundo)
 DEF INTRO_FRAMES   EQU 120   ;; Tiempo que se muestra el texto "FASE N" al empezar la partida (2 s)
 DEF BREAK_FRAMES   EQU 144   ;; Cambio de fase en pantalla de juego: duracion del mensaje "FASE N" (2,4 s); no salen celulas mientras dura
 DEF BREAK_FLASH_END EQU 80   ;; Los parpadeos de la pantalla ocurren mientras wBreak > este valor, uno cada 16 fotogramas (4 parpadeos)
