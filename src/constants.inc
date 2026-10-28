@@ -184,7 +184,7 @@ DEF MISSILE_COOLDOWN EQU 30  ;; Recarga por boton en modo misiles (0,5 s)
 DEF OAM_XFLIP       EQU $20
 DEF OAM_YFLIP       EQU $40
 
-DEF MAX_EXPLOSIONS EQU 3    ;; Explosiones a la vez (1 sprite cada una)
+DEF MAX_EXPLOSIONS EQU 8    ;; Explosiones a la vez (1 sprite cada una; 8 = todas las celulas explotando al cambiar de fase)
 DEF EXPL_SIZE      EQU 3    ;; [fotogramas que quedan, X, Y]
 DEF EXPL_FRAMES    EQU 12   ;; Duracion de una explosion (3 dibujos de 4 fotogramas)
 DEF FLASH_FRAMES   EQU 4    ;; Duracion del destello de pantalla al ser golpeado
@@ -245,7 +245,10 @@ DEF COMBO_BLINK_MIN   EQU 2    ;; Semiperiodo minimo del parpadeo (fotogramas)
 ;;-- Fases (niveles). La partida dura PHASE_COUNT fases de PHASE_FRAMES fotogramas cada una
 DEF PHASE_COUNT    EQU 5
 DEF PHASE_FRAMES   EQU 3600  ;; 60 fotogramas/s * 60 s = 1 minuto por fase (la Game Boy real va a 59,7 fps: 60,3 s)
-DEF INTRO_FRAMES   EQU 120   ;; Tiempo que se muestra el texto "FASE N" (2 s)
+DEF INTRO_FRAMES   EQU 120   ;; Tiempo que se muestra el texto "FASE N" al empezar la partida (2 s)
+DEF BREAK_FRAMES   EQU 144   ;; Cambio de fase en pantalla de juego: duracion del mensaje "FASE N" (2,4 s); no salen celulas mientras dura
+DEF BREAK_FLASH_END EQU 80   ;; Los parpadeos de la pantalla ocurren mientras wBreak > este valor, uno cada 16 fotogramas (4 parpadeos)
+DEF BREAK_FLASH_LEN EQU 8    ;; Duracion de cada parpadeo (fotogramas de wFlash)
 DEF FADE_STEP_FRAMES EQU 6   ;; Cada escalon del oscurecimiento/aclarado dura 6 fotogramas (3 escalones = 18 fotogramas)
 DEF FADE_BLACK     EQU 3     ;; Nivel de oscurecimiento maximo (0 = normal ... 3 = negro)
 

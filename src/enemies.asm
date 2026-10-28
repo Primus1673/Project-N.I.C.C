@@ -124,6 +124,51 @@ Enemies_SetPhase::
    ret
 
 ;;-----------------------------------------------------------------
+;; Enemies_Wipe: Cambio de fase: todas las celulas explotan a la vez (sin puntos ni gotas) y desaparecen, se cancela el aviso
+;;    de entrada pendiente y la proxima aparicion se programa como al empezar una fase
+;;    Destruye: A, BC, DE, HL
+Enemies_Wipe::
+   ld   hl, wEnemies
+   ld   d, MAX_ENEMIES
+.loop:
+   ld   a, [hl]                 ;; Tipo
+   and  a
+   jr   z, .next
+   push hl
+   xor  a
+   ld   [hl], a                 ;; El hueco queda libre
+   inc  hl
+   inc  hl                      ;; HL -> X
+   ld   a, [hl+]
+   ld   b, a                    ;; B = X
+   ld   a, [hl+]
+   ld   c, a                    ;; C = Y
+   ld   a, [hl]                 ;; tamaño en tiles
+   dec  a
+   add  a
+   add  a                       ;; 4 * (tamaño - 1): hasta el centro de la celula
+   ld   e, a
+   ld   a, b
+   add  e
+   ld   b, a
+   ld   a, c
+   add  e
+   ld   c, a
+   call Explo_Spawn
+   pop  hl
+.next:
+   REPT ENEMY_SIZE
+      inc  hl
+   ENDR
+   dec  d
+   jr   nz, .loop
+   xor  a
+   ld   [wWarnTimer], a         ;; Sin celula avisada
+   ld   a, ENEMY_SPAWN_FIRST
+   ld   [wSpawnTimer], a
+   ret
+
+;;-----------------------------------------------------------------
 ;; Enemies_Count: Cuenta las celulas que hay en pantalla
 ;;    Salida: A = numero de celulas
 ;;    Destruye: A, B, C, HL

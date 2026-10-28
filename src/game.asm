@@ -17,7 +17,8 @@ wPhaseTimerHi: db
 wFadeLevel:   db                ;; Oscurecimiento de la pantalla: 0 normal ... FADE_BLACK negro
 wStateTimer:  db                ;; Cuenta atras de los estados de transicion
 wEndKind::    db                ;; END_NONE, END_WIN (todas las fases superadas) o END_LOSE (sin vidas)
-wFlash:       db                ;; Fotogramas que le quedan al destello de pantalla (golpe al jugador)
+wFlash:       db                ;; Fotogramas que le quedan al destello de pantalla (golpe al jugador o cambio de fase)
+wBreak:       db                ;; Cambio de fase en pantalla de juego: fotogramas que quedan del mensaje (0 = no hay cambio de fase)
 wResultsView: db                ;; 1 = se muestra la pantalla de puntuacion (mapa de fondo 1 y paleta invertida)
 
 SECTION "Game", ROM0
@@ -33,6 +34,7 @@ Game_Start::
    ld   [wEndKind], a        ;; La partida sigue
    ld   [wResultsView], a    ;; Se vuelve al mapa de fondo del juego
    ld   [wFlash], a
+   ld   [wBreak], a
    ld   a, STATE_PLAYING
    ld   [wGameState], a
    ld   a, PLAYER_LIVES
@@ -74,6 +76,44 @@ Game_BeginPhase:
    jp   Sprites_Clear
 
 ;;-----------------------------------------------------------------
+;; Break_Start: Fin de una fase que no es la ultima: sin cortar la partida, las celulas explotan, dejan de salir y durante
+;;    BREAK_FRAMES fotogramas la pantalla parpadea y muestra "FASE N" (Game_Draw). El jugador sigue moviendose y disparando
+;;    (sin celulas no puede ser golpeado). Aqui ya se pasa a la fase siguiente: dificultad y temporizador listos para cuando acabe.
+;;    Destruye: A, BC, DE, HL
+Break_Start:
+   ld   a, [wPhase]
+   ld   b, a
+   inc  a
+   ld   [wPhase], a
+   ld   a, b                 ;; Enemies_SetPhase: 0 = la primera fase, es decir, la fase anterior a la nueva
+   call Enemies_SetPhase
+   ld   a, LOW(PHASE_FRAMES)
+   ld   [wPhaseTimerLo], a
+   ld   a, HIGH(PHASE_FRAMES)
+   ld   [wPhaseTimerHi], a
+   call Enemies_Wipe
+   ld   a, BREAK_FRAMES
+   ld   [wBreak], a
+   ret
+
+;;-----------------------------------------------------------------
+;; Break_Tick: Un fotograma del cambio de fase: cuenta atras y parpadeo de la pantalla (uno cada 16 fotogramas al principio)
+;;    Destruye: A, B
+Break_Tick:
+   ld   a, [wBreak]
+   ld   b, a
+   dec  a
+   ld   [wBreak], a
+   ld   a, b
+   cp   BREAK_FLASH_END + 1
+   ret  c                    ;; Ya no hay mas parpadeos
+   and  %00001111
+   ret  nz
+   ld   a, BREAK_FLASH_LEN
+   ld   [wFlash], a
+   ret
+
+;;-----------------------------------------------------------------
 ;; Game_StepTimer: Avanza el contador de un escalon de fundido
 ;;    Salida: Z = 1 si el escalon ha terminado (y el contador se recarga), Z = 0 si aun falta
 ;;    Destruye: A
@@ -91,7 +131,9 @@ Game_StepTimer:
 
 ;;-----------------------------------------------------------------
 ;; Game_Update: Un fotograma del estado de la partida (ver STATE_* en constants.inc):
-;;    JUGANDO -> (fin de fase) FADE_OUT -> INTRO ("FASE N") -> FADE_IN -> JUGANDO ...
+;;    Empezar partida: INTRO ("FASE 1" sobre negro) -> FADE_IN -> JUGANDO.
+;;    Fin de una fase (no la ultima): sigue JUGANDO, sin cortes, con wBreak > 0 (Break_Start): las celulas explotan, no salen mas, la
+;;    pantalla parpadea y se ve "FASE N" unos segundos mientras el jugador sigue moviendose y disparando.
 ;;    Sin vidas: GAMEOVER (congelado) -> FADE_OUT -> RESULTS. Tras la ultima fase: FADE_OUT -> RESULTS.
 
 ;;    START durante la partida la pone en PAUSA (STATE_PAUSED): todo se congela y vuelve con otro START.
@@ -148,7 +190,14 @@ Game_Update::
    call Energy_Update        ;; SELECT activa los misiles; la barra se vacia con ellos
    call Player_Update
    call Bullets_Update
+   ld   a, [wBreak]
+   and  a
+   jr   nz, .breakTick
    call Enemies_Update       ;; Incluye los choques con el jugador (Game_PlayerHit)
+   jr   .afterEnemies
+.breakTick:                  ;; Cambio de fase: no hay celulas ni salen nuevas; el jugador sigue jugando
+   call Break_Tick
+.afterEnemies:
    call Explo_Update
    call Drops_Update
    ld   a, [wGameState]
@@ -161,7 +210,10 @@ Game_Update::
    dec  a
    ld   [wInvuln], a
 .noInvuln:
-   ;; Temporizador de la fase (16 bits)
+   ;; Temporizador de la fase (16 bits); parado durante el mensaje de cambio de fase
+   ld   a, [wBreak]
+   and  a
+   ret  nz
    ld   a, [wPhaseTimerLo]
    ld   l, a
    ld   a, [wPhaseTimerHi]
@@ -176,7 +228,7 @@ Game_Update::
    ;; La fase ha terminado: empieza a oscurecerse la pantalla (todo queda congelado)
    ld   a, [wPhase]
    cp   PHASE_COUNT
-   jr   nz, .startFade
+   jp   nz, Break_Start      ;; Cambio de fase sin cortes: parpadeo y mensaje sobre la partida
    ld   a, END_WIN           ;; Era la ultima: despues del negro viene la pantalla de puntuacion
    ld   [wEndKind], a
 .startFade:
@@ -196,14 +248,7 @@ Game_Update::
    ld   [wFadeLevel], a
    cp   FADE_BLACK
    ret  nz
-   ld   a, [wEndKind]
-   and  a
-   jr   nz, .toResults       ;; Fin de la partida (ganada o perdida)
-   ld   a, [wPhase]
-   inc  a
-   ld   [wPhase], a
-   jp   Game_BeginPhase      ;; Siguiente fase: pantalla negra con su texto
-.toResults:
+.toResults:                 ;; (el fundido a negro solo se usa al acabar la partida, ganada o perdida)
    call Results_Begin        ;; Calcula bonus y prepara la animacion
    ld   a, STATE_RESULTS
    ld   [wGameState], a
@@ -309,6 +354,9 @@ Game_Draw::
    jr   z, .paused
    cp   STATE_TITLE
    jp   nc, Sprites_Clear    ;; El titulo, las puntuaciones, los controles y el nombre tambien (estados >= STATE_TITLE)
+   ld   a, [wBreak]
+   and  a
+   jr   nz, .breakMsg
    call Player_Draw
    call Bullets_Draw
    jp   Enemies_Draw
@@ -326,6 +374,23 @@ Game_Draw::
    xor  a
    ld   [wTextDark], a
    jp   Enemies_DrawAt
+
+.breakMsg:                   ;; Cambio de fase: el juego sigue a la vista con "FASE N" en negro encima
+   call Player_Draw
+   call Bullets_Draw
+   ld   de, wShadowOAM + SPR_SLOT_ENEMIES * OAM_ENTRY_SIZE
+   ld   a, 1
+   ld   [wTextDark], a
+   ld   hl, StrPhase
+   ld   b, (SCREEN_W - 6 * TILE_SIZE) / 2
+   ld   c, TEXT_CENTER_Y
+   call Text_DrawString
+   ld   a, [wPhase]
+   add  TILE_FONT_DIGIT0
+   call Text_DrawChar
+   xor  a
+   ld   [wTextDark], a
+   jp   Enemies_DrawAt       ;; (ya no hay celulas: dibuja las explosiones, gotas y oculta el resto)
 
 .intro:                      ;; "FASE N" centrado: 6 caracteres de 8 pixeles
    call Sprites_Clear
