@@ -1,7 +1,8 @@
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 ;; energy.asm : Energia celular: gotas que sueltan las celulas, barra de energia y modo misiles
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
-;;   - Al morir una celula, con probabilidad DROP_PERCENT suelta una gota (Drop_Roll). La gota cae despacio hacia abajo y
+;;   - Al morir una celula, con probabilidad DROP_PERCENT suelta una gota de energia y, si falta alguna vida, con probabilidad
+;;     HEART_PERCENT un corazon que da 1 vida al recogerlo (Drop_Roll). La gota cae despacio hacia abajo y
 ;;     desaparece al llegar al marco inferior. Si el jugador la toca, la barra sube ENERGY_PER_DROP pixeles (maximo ENERGY_MAX).
 ;;   - Con la barra llena, SELECT activa el modo misiles (wMissileMode = 1): bullets.asm dispara misiles guiados en vez de balas.
 ;;     Mientras dura, la barra baja 1 pixel cada ENERGY_DRAIN_FRAMES fotogramas; al llegar a 0 el modo se desactiva.
@@ -112,12 +113,26 @@ Energy_Update::
    ret
 
 ;;-----------------------------------------------------------------
+;; Life_Add: Recoge un corazon: +1 vida (como mucho PLAYER_LIVES)
+;;    Destruye: A
+Life_Add:
+   ld   a, [wLives]
+   cp   PLAYER_LIVES
+   ret  nc
+   inc  a
+   ld   [wLives], a
+   ld   a, 1
+   ld   [wHudDirty], a
+   ret
+
+;;-----------------------------------------------------------------
 ;; Drop_Spawn: Crea una gota en un hueco libre (si lo hay)
 ;;    Entrada: B = X, C = Y     Conserva todos los registros
 Drop_Spawn:
    push af
    push de
    push hl
+   ld   e, a                    ;; E = tipo de gota
    ld   hl, wDrops
    ld   d, MAX_DROPS
 .find:
@@ -131,7 +146,7 @@ Drop_Spawn:
    jr   nz, .find
    jr   .end                    ;; Sin hueco
 .free:
-   ld   a, 1
+   ld   a, e
    ld   [hl+], a
    ld   a, b
    ld   [hl+], a
@@ -157,7 +172,17 @@ Drop_Roll::
    call Random_Range            ;; A = 0..99 (conserva C, DE y HL)
    pop  bc
    cp   DROP_PERCENT
+   jr   nc, .noEnergy
+   ld   a, DROP_ENERGY
+   call Drop_Spawn
+   jr   .none
+.noEnergy:                      ;; Tirada [DROP_PERCENT, DROP_PERCENT + HEART_PERCENT): corazon, pero solo si falta alguna vida
+   cp   DROP_PERCENT + HEART_PERCENT
    jr   nc, .none
+   ld   a, [wLives]
+   cp   PLAYER_LIVES
+   jr   nc, .none
+   ld   a, DROP_HEART
    call Drop_Spawn
 .none:
    pop  hl
@@ -213,12 +238,21 @@ Drops_Update::
    cp   2 * DROP_REACH + 1
    dec  hl
    jr   nc, .miss
-   dec  hl                      ;; HL -> activa
+   dec  hl                      ;; HL -> tipo
+   ld   a, [hl]
+   ld   d, a                    ;; D = tipo
    xor  a
    ld   [hl], a                 ;; Recogida
    push bc
    push hl
+   ld   a, d
+   cp   DROP_HEART
+   jr   z, .getHeart
    call Energy_Add
+   jr   .collected
+.getHeart:
+   call Life_Add
+.collected:
    pop  hl
    pop  bc
    jr   .next
@@ -243,11 +277,17 @@ Drops_Draw::
    ld   a, [hl+]
    and  a
    jr   z, .skip
+   push af                      ;; (tipo: DE es el destino en la OAM y no se puede tocar)
    ld   a, [hl+]
    ld   b, a
    ld   a, [hl+]
    ld   c, a
-   ld   a, TILE_DROP
+   pop  af
+   cp   DROP_HEART
+   ld   a, TILE_DROP            ;; (ld no toca los flags)
+   jr   nz, .putDrop
+   ld   a, TILE_HEART_DROP
+.putDrop:
    push hl
    call Put_Sprite
    pop  hl

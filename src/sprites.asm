@@ -66,6 +66,7 @@ Sprites_Clear::
 ;;    - src/sprites/aviso.z80 -> a partir del tile TILE_WARN (4 flechas del aviso de entrada de las celulas)
 ;;    - src/sprites/energia.z80 -> a partir del tile TILE_MISSILE_V (misiles, gota y barra de energia: 12 tiles)
 ;;    - src/sprites/virus.z80 -> a partir del tile TILE_VIRUS (virus grande del fondo del titulo: 36 tiles a 6x6)
+;;    - src/sprites/corazon.z80 -> a partir del tile TILE_HEART_DROP (corazon que sueltan las celulas: 1 tile)
 ;;    El tile 0 (TILE_BLANK) no se copia: ya esta vacio porque main.asm borra la VRAM al arrancar.
 ;;    IMPORTANTE: solo llamar con la LCD apagada o durante el VBlank
 ;;    Destruye: A, BC, DE, HL
@@ -134,6 +135,11 @@ Sprites_LoadTiles::
    ld   hl, _VRAM + TILE_VIRUS * TILE_BYTES
    ld   bc, VirusTiles.end - VirusTiles
    call MemCopy
+
+   ld   de, HeartTiles
+   ld   hl, _VRAM + TILE_HEART_DROP * TILE_BYTES
+   ld   bc, HeartTiles.end - HeartTiles
+   call MemCopy
    ret
 
 ;;-----------------------------------------------------------------
@@ -180,3 +186,6 @@ EnergyTiles.end:
 
 INCLUDE "sprites/virus.z80"
 VirusTiles.end:
+
+INCLUDE "sprites/corazon.z80"
+HeartTiles.end:

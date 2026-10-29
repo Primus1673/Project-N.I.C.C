@@ -169,9 +169,13 @@ DEF WARN_BLINK_BIT EQU 2    ;; La flecha se ve cuando este bit del contador esta
 DEF ENERGY_MAX      EQU 40   ;; Barra llena: 5 tiles de 8 pixeles
 DEF ENERGY_PER_DROP EQU 5    ;; Cada gota: 1/8 de la barra
 DEF ENERGY_DRAIN_FRAMES EQU 12   ;; Con el modo misiles activo, la barra baja 1 pixel cada 12 fotogramas: 40 * 12 = 480 = 8 s
-DEF DROP_PERCENT    EQU 20   ;; Probabilidad (0-100) de que una celula suelte una gota al morir
+DEF DROP_PERCENT    EQU 25   ;; Probabilidad (0-100) de que una celula suelte una gota de energia al morir
+DEF HEART_PERCENT   EQU 4    ;; Probabilidad (0-100) de que suelte un corazon (solo si falta alguna vida)
+DEF DROP_ENERGY     EQU 1    ;; Tipo de gota: energia
+DEF DROP_HEART      EQU 2    ;; ... corazon: da 1 vida
+DEF TILE_HEART_DROP EQU 167  ;; Corazon que cae: 1 tile de src/sprites/corazon.z80 (a continuacion de los 36 del virus)
 DEF MAX_DROPS       EQU 3    ;; Gotas a la vez (1 sprite cada una)
-DEF DROP_SIZE       EQU 3    ;; [activa, X, Y]
+DEF DROP_SIZE       EQU 3    ;; [tipo (0 = hueco libre), X, Y]
 DEF DROP_SLOW       EQU 3    ;; La gota baja 1 pixel cada DROP_SLOW fotogramas
 DEF DROP_REACH      EQU 6    ;; Distancia maxima (pixeles, por eje) entre la gota y el jugador para recogerla
 DEF HUD_BAR_COL     EQU 3    ;; Columna del primer tile de la barra del HUD (ocupa 5)

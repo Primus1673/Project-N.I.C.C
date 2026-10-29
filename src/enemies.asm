@@ -88,9 +88,9 @@ PhaseTable:
    ;;       max  min  var  normal         %grande  grande      %agresiva
    PhaseRow   3, 100,  60, %00010001,       0, %00010000,   0   ;; Fase 1: normal 2/8 = 15 px/s   (sin grandes ni agresivas)
    PhaseRow   4,  80,  50, %00100101,      20, %00010000,   0   ;; Fase 2: normal 3/8 = 22 px/s   grande 1/8 =  7 px/s
-   PhaseRow   5,  60,  40, %01010101,      25, %00010001,  15   ;; Fase 3: normal 4/8 = 30 px/s   grande 2/8 = 15 px/s
-   PhaseRow   6,  45,  30, %01101101,      30, %00010001,  20   ;; Fase 4: normal 5/8 = 37 px/s   grande 2/8 = 15 px/s
-   PhaseRow   7,  30,  30, %11101110,      35, %00100101,  25   ;; Fase 5: normal 6/8 = 45 px/s   grande 3/8 = 22 px/s
+   PhaseRow   5,  70,  40, %01010101,      20, %00010000,  10   ;; Fase 3: normal 4/8 = 30 px/s   grande 1/8 =  7 px/s
+   PhaseRow   5,  55,  35, %01010101,      25, %00010001,  15   ;; Fase 4: normal 4/8 = 30 px/s   grande 2/8 = 15 px/s
+   PhaseRow   6,  45,  35, %01101101,      30, %00010001,  20   ;; Fase 5: normal 5/8 = 37 px/s   grande 2/8 = 15 px/s
 ASSERT (@ - PhaseTable) == PHASE_ROW_SIZE * PHASE_COUNT
 
 ;;-----------------------------------------------------------------
