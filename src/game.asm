@@ -20,6 +20,7 @@ wEndKind::    db                ;; END_NONE, END_WIN (todas las fases superadas)
 wFlash:       db                ;; Fotogramas que le quedan al destello de pantalla (golpe al jugador o cambio de fase)
 wPhaseSec:    db                ;; Segundos que quedan de la fase (el cronometro del HUD)
 wSecFrames:   db                ;; Fotogramas que faltan para el siguiente segundo
+wComboHold:   db                ;; 1 = el combo esta congelado hasta que la fase nueva tenga la primera celula (o su aviso)
 wBreak:       db                ;; Cambio de fase en pantalla de juego: fotogramas que quedan del mensaje (0 = no hay cambio de fase)
 wResultsView: db                ;; 1 = se muestra la pantalla de puntuacion (mapa de fondo 1 y paleta invertida)
 
@@ -37,6 +38,7 @@ Game_Start::
    ld   [wResultsView], a    ;; Se vuelve al mapa de fondo del juego
    ld   [wFlash], a
    ld   [wBreak], a
+   ld   [wComboHold], a
    ld   a, STATE_PLAYING
    ld   [wGameState], a
    ld   a, PLAYER_LIVES
@@ -108,6 +110,10 @@ Break_Start:
    ld   [wPhaseTimerHi], a
    call Phase_ResetClock
    call Enemies_Wipe
+   ld   a, 1
+   ld   [wComboHold], a      ;; El combo no corre mientras no haya celulas en la fase nueva
+   ld   [wComboShow], a      ;; ... y el "X<n>" se queda visible (no congelado en la mitad oculta del parpadeo)
+   ld   [wHudDirty], a
    ld   a, BREAK_FRAMES
    ld   [wBreak], a
    ret
@@ -219,7 +225,26 @@ Game_Update::
    ld   a, [wGameState]
    cp   STATE_PLAYING
    ret  nz                   ;; Ha perdido la ultima vida en este fotograma
-   call Combo_Update         ;; Cuenta atras y parpadeo del combo (solo avanza aqui: se detiene en las transiciones de fase)
+   ;; Cuenta atras y parpadeo del combo: congelados durante el mensaje de cambio de fase y hasta que la fase nueva tiene
+   ;; su primera celula (o su aviso), para que la espera sin enemigos no rompa la cadena
+   ld   a, [wBreak]
+   and  a
+   jr   nz, .comboFrozen
+   ld   a, [wComboHold]
+   and  a
+   jr   z, .comboRun
+   ld   a, [wWarnTimer]
+   and  a
+   jr   nz, .comboRelease
+   call Enemies_Count
+   and  a
+   jr   z, .comboFrozen
+.comboRelease:
+   xor  a
+   ld   [wComboHold], a
+.comboRun:
+   call Combo_Update
+.comboFrozen:
    ld   a, [wInvuln]
    and  a
    jr   z, .noInvuln

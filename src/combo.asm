@@ -5,7 +5,8 @@
 ;;   - Multiplicador = 1 + wCombo / COMBO_STEP, con tope COMBO_MAX_MULT: x1 (0-2 bajas), x2 (3-5), x3 (6-8), x4 (9-11), x5 (12+).
 ;;   - La cadena se rompe (Combo_Reset) si se acaba la cuenta atras o si el jugador recibe un golpe.
 ;;   - La cuenta atras solo avanza en Combo_Update, que se llama unicamente mientras se juega: en las pantallas de
-;;     "FASE N" (y en los fundidos) el tiempo del combo queda detenido, y la cadena se mantiene al cambiar de fase.
+;;     "FASE N" (y en los fundidos) el tiempo del combo queda detenido, y la cadena se mantiene al cambiar de fase: el combo
+;;     tambien se congela durante el mensaje de cambio de fase y hasta la primera celula de la fase nueva (game.asm, wComboHold).
 ;;   - En el HUD se ve "X<multiplicador>" (a partir de x2). Cuando quedan menos de COMBO_WARN_FRAMES fotogramas parpadea,
 ;;     con un semiperiodo proporcional al tiempo que queda (T/8, minimo COMBO_BLINK_MIN): cada vez mas rapido hasta 0.
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
