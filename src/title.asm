@@ -26,6 +26,10 @@ wNameIdx:    db       ;; Letra del nombre que se esta editando (0-2)
 wNameTimer:  db       ;; Fotogramas que faltan para el siguiente parpadeo de la letra
 wNameOn:     db       ;; 1 = la letra elegida se ve
 
+wVicTimer:   db       ;; Pantalla de victoria: fotogramas desde que termino de dibujarse
+wVicPal:     db       ;; ... paleta del fondo: 0 invertida (normal en esta pantalla), 1 normal (destello), 2 negro (aun dibujando)
+wVicShow:    db       ;; ... 1 = el titulo "VICTORIA" se ve
+
 SECTION "Title", ROM0
 
 ;;-----------------------------------------------------------------
@@ -191,10 +195,92 @@ Menu_PaintOptions:
    ret
 
 ;;-----------------------------------------------------------------
+;; Victory_Begin: Empieza la pantalla de victoria (viene del fundido a negro tras la ultima fase): mensaje de cierre en pantalla
+;;    negra; mientras se dibuja la paleta es toda negra y despues empiezan los destellos (Victory_Update)
+;;    Destruye: A, BC, DE, HL
+Victory_Begin::
+   ld   a, STATE_VICTORY
+   call Screen_Enter
+   xor  a
+   ld   [wVicTimer], a
+   inc  a
+   ld   [wVicShow], a
+   ld   a, 2
+   ld   [wVicPal], a         ;; Negro hasta que termine de dibujarse
+   CenteredRow StrWin, VIC_ROW_TITLE
+   CenteredRow StrInfection, VIC_ROW_L1
+   CenteredRow StrEradicated, VIC_ROW_L2
+   jp   Sprites_Clear
+
+;;-----------------------------------------------------------------
+;; Victory_Update: Un fotograma de la pantalla de victoria: VIC_FLASH_FRAMES de destellos (la pantalla alterna entre invertida y
+;;    normal cada 8 fotogramas), luego aparece "PULSA START" y el titulo parpadea. START pasa a la pantalla de puntuacion.
+;;    Destruye: A, BC, DE, HL
+Victory_Update:
+   ld   a, [wDirtyCount]
+   and  a
+   ret  nz                   ;; Aun se esta dibujando
+   ld   a, [wVicTimer]
+   inc  a
+   jr   nz, .store
+   dec  a                    ;; (satura en 255)
+.store:
+   ld   [wVicTimer], a
+   ld   b, a                 ;; B = fotogramas
+   cp   VIC_FLASH_FRAMES
+   jr   nc, .steady
+   and  %00001000
+   jr   z, .pal0
+   ld   a, 1
+   jr   .setPal
+.steady:
+.pal0:
+   xor  a
+.setPal:
+   ld   [wVicPal], a
+   ld   a, b
+   cp   VIC_FLASH_FRAMES
+   jr   c, .ret              ;; Aun hay destellos
+   jr   nz, .afterPress
+   call Row_Clear            ;; Justo al acabar los destellos aparece "PULSA START"
+   ld   hl, StrPress
+   call Row_PutCentered
+   ld   a, VIC_ROW_PRESS
+   call Row_Commit
+   ret
+.afterPress:
+   ld   a, b
+   cp   VIC_FLASH_FRAMES + 32
+   jr   c, .input            ;; El titulo empieza a parpadear 32 fotogramas despues
+   and  VIC_BLINK_MASK
+   jr   nz, .input
+   ld   a, [wVicShow]
+   xor  1
+   ld   [wVicShow], a
+   call Row_Clear
+   ld   a, [wVicShow]
+   and  a
+   jr   z, .commitTitle
+   ld   hl, StrWin
+   call Row_PutCentered
+.commitTitle:
+   ld   a, VIC_ROW_TITLE
+   call Row_Commit
+.input:
+   ldh  a, [hInputNew]
+   bit  BTNB_START, a
+   ret  z
+   jp   Game_ToResults       ;; Calcula el bonus y pasa a la pantalla de puntuacion
+.ret:
+   ret
+
+;;-----------------------------------------------------------------
 ;; Menu_Update: Un fotograma de las pantallas del titulo (estados >= STATE_TITLE)
 ;;    Destruye: A, BC, DE, HL
 Menu_Update::
    ld   a, [wGameState]
+   cp   STATE_VICTORY
+   jp   z, Victory_Update
    cp   STATE_SCORES
    jp   z, Scores_Update
    cp   STATE_NAME

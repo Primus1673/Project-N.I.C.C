@@ -81,6 +81,11 @@ Game_BeginPhase:
    jp   Sprites_Clear
 
 ;;-----------------------------------------------------------------
+;; Game_ToResults: Pasa a la pantalla de puntuacion final (calcula el bonus y prepara la animacion). Lo usa la pantalla de victoria
+Game_ToResults::
+   jp   Game_Update.toResults
+
+;;-----------------------------------------------------------------
 ;; Phase_ResetClock: El cronometro del HUD vuelve a PHASE_SECONDS (principio de una fase)
 ;;    Destruye: A
 Phase_ResetClock:
@@ -313,7 +318,10 @@ Game_Update::
    ld   [wFadeLevel], a
    cp   FADE_BLACK
    ret  nz
-.toResults:                 ;; (el fundido a negro solo se usa al acabar la partida, ganada o perdida)
+   ld   a, [wEndKind]
+   cp   END_WIN
+   jp   z, Victory_Begin     ;; Ganada: antes de la puntuacion sale la pantalla de victoria (title.asm)
+.toResults:                  ;; (el fundido a negro solo se usa al acabar la partida, ganada o perdida)
    call Results_Begin        ;; Calcula bonus y prepara la animacion
    ld   a, STATE_RESULTS
    ld   [wGameState], a
@@ -383,9 +391,22 @@ Game_ApplyFade::
    ldh  a, [rLCDC]           ;; Titulo (wResultsView = 2): mapa 1 y paleta invertida desde el primer fotograma
    set  3, a
    ldh  [rLCDC], a
-   ld   a, BGP_RESULTS
+   ld   a, [wGameState]
+   cp   STATE_VICTORY
+   ld   a, BGP_RESULTS       ;; (ld no toca los flags)
+   jr   nz, .titlePal
+   ld   a, [wVicPal]         ;; Pantalla de victoria: destellos (0 invertida, 1 normal, 2 negro mientras se dibuja)
+   ld   e, a
+   ld   d, 0
+   ld   hl, .vicPalettes
+   add  hl, de
+   ld   a, [hl]
+.titlePal:
    ldh  [rBGP], a
    ret
+
+.vicPalettes:
+   db   BGP_RESULTS, PALETTE_DEFAULT, %11111111
 .results1:                   ;; Pantalla de puntuacion: mapa 1 ($9C00) y paleta invertida (tile 0 negro, letras blancas)
    ldh  a, [rLCDC]
    set  3, a                 ;; Bit 3 de LCDC = 1: el fondo usa el mapa 1

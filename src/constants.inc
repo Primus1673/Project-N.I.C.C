@@ -220,6 +220,7 @@ DEF STATE_INTRO    EQU 3     ;; Pantalla negra con el texto "FASE N"
 DEF STATE_FADE_IN  EQU 4     ;; La pantalla vuelve a aclararse y empieza la fase
 DEF STATE_TITLE    EQU 6     ;; Menu del titulo (JUGAR / PUNTUACIONES / CONTROLES)
 DEF STATE_SCORES   EQU 7     ;; Tabla de puntuaciones
+DEF STATE_VICTORY  EQU 8     ;; Pantalla de victoria (tras la ultima fase): mensaje con destellos; START pasa a la puntuacion
 DEF STATE_PAUSED   EQU 10    ;; Partida en pausa (START): todo congelado, pantalla negra con "PAUSA"
 DEF STATE_NAME     EQU 9     ;; Eleccion del nombre (3 letras) tras entrar en la tabla
 DEF STATE_RESULTS  EQU 5     ;; Pantalla de puntuacion final (tras la ultima fase o tras perder). START reinicia
@@ -307,6 +308,12 @@ DEF TILE_DASH      EQU TILE_TITLE + 39   ;; Guion "-" (tile de titulo.z80)
 DEF SCORE_SLOTS    EQU 8     ;; Puntuaciones que guarda la tabla
 DEF SCORE_ENTRY_SIZE EQU 8   ;; Cada una: 3 letras del nombre (0 = A ... 25 = Z) + 5 cifras de la puntuacion
 DEF NAME_LETTERS   EQU 26
+DEF VIC_ROW_TITLE   EQU 5     ;; Pantalla de victoria: filas del titulo, de las dos lineas del mensaje y de "PULSA START"
+DEF VIC_ROW_L1      EQU 8
+DEF VIC_ROW_L2      EQU 10
+DEF VIC_ROW_PRESS   EQU 15
+DEF VIC_FLASH_FRAMES EQU 64  ;; Fotogramas de destellos de pantalla (cada 8 fotogramas alterna entre normal e invertida)
+DEF VIC_BLINK_MASK  EQU %00011111 ;; Despues de los destellos, el titulo parpadea: 32 fotogramas visible, 32 oculto
 DEF SCORES_ROW_TITLE EQU 1
 DEF SCORES_ROW0    EQU 4     ;; Fila de la primera puntuacion (una por fila)
 DEF SCORES_ROW_PRESS EQU 15

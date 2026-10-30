@@ -40,6 +40,8 @@ StrPhases::  db "FASES", TEXT_END
 StrHearts::  db "CORAZONES", TEXT_END
 StrTotal::   db "TOTAL", TEXT_END
 StrPress::   db "PULSA START", TEXT_END
+StrInfection:: db "INFECCION", TEXT_END      ;; Pantalla de victoria
+StrEradicated:: db "ERRADICADA", TEXT_END
 StrRecord::  db "RECORD", TEXT_END
 StrNewRecord:: db "NUEVO RECORD", TEXT_END
 StrPlace::   db "PUESTO", TEXT_END
