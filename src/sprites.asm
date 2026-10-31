@@ -142,6 +142,11 @@ Sprites_LoadTiles::
    ld   bc, HeartTiles.end - HeartTiles
    call MemCopy
 
+   ld   de, ZigTiles
+   ld   hl, _VRAM + TILE_ZIGZAG * TILE_BYTES
+   ld   bc, ZigTiles.end - ZigTiles
+   call MemCopy
+
    ld   de, ShieldTiles
    ld   hl, _VRAM + TILE_SHIELD * TILE_BYTES
    ld   bc, ShieldTiles.end - ShieldTiles
@@ -198,3 +203,6 @@ HeartTiles.end:
 
 INCLUDE "sprites/escudo.z80"
 ShieldTiles.end:
+
+INCLUDE "sprites/celula_zigzag.z80"
+ZigTiles.end:

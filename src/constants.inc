@@ -153,6 +153,9 @@ DEF ENEMY_AGGR_HP       EQU 2
 DEF AGGR_SPEED_PCT EQU 70  ;; Velocidad de la agresiva = este % de la de la celula normal de la fase (1-99)
 ASSERT AGGR_SPEED_PCT > 0 && AGGR_SPEED_PCT < 100
 DEF MAX_AGGR       EQU 2   ;; Celulas agresivas a la vez
+DEF ENEMY_ZIGZAG   EQU 4   ;; Celula zigzag (tipo 4): 1x1, 1 disparo; avanza ondulando de lado a lado
+DEF ZIG_STEP_PX    EQU 2   ;; Pixeles que se desplaza de lado la zigzag por cada paso (1 = onda suave de 8 px, 2 = onda de 16 px)
+DEF MAX_ZIG        EQU 3   ;; Celulas zigzag a la vez
 DEF AGGR_OFFSET    EQU (ENEMY_AGGR_HP - 1) * TILE_SIZE   ;; Zona de aparicion estrechada: 8 pixeles
 
 ;;    Limite de sprites: la OAM admite 40. Nave (1) + balas (MAX_BULLETS) + enemigos. Una celula grande a 3x3 gasta 9 sprites.
@@ -174,6 +177,7 @@ DEF HEART_PERCENT   EQU 4    ;; Probabilidad (0-100) de que suelte un corazon (s
 DEF DROP_ENERGY     EQU 1    ;; Tipo de gota: energia
 DEF DROP_HEART      EQU 2    ;; ... corazon: da 1 vida
 DEF TILE_HEART_DROP EQU 167  ;; Corazon que cae: 1 tile de src/sprites/corazon.z80 (a continuacion de los 36 del virus)
+DEF TILE_ZIGZAG     EQU 172  ;; Celula zigzag: 1 tile de src/sprites/celula_zigzag.z80
 DEF TILE_SHIELD     EQU 168  ;; Escudo: anillo de 16x16 en 4 tiles (arriba-izq, arriba-der, abajo-izq, abajo-der) de src/sprites/escudo.z80
 DEF MAX_DROPS       EQU 3    ;; Gotas a la vez (1 sprite cada una)
 DEF DROP_SIZE       EQU 3    ;; [tipo (0 = hueco libre), X, Y]
@@ -233,6 +237,7 @@ DEF STATE_RESULTS  EQU 5     ;; Pantalla de puntuacion final (tras la ultima fas
 DEF SCORE_DIGITS   EQU 5     ;; Puntuacion de 5 cifras decimales (maximo 99999, se satura)
 DEF ENEMY_NORMAL_POINTS EQU 1 ;; Puntos de la celula tipo 1, EN DECENAS (1 = 10 puntos)
 DEF ENEMY_BIG_POINTS    EQU 5 ;; Puntos de la celula grande, en decenas (50 puntos)
+DEF ENEMY_ZIG_POINTS    EQU 2 ;; Celula zigzag, en decenas (20 puntos)
 DEF ENEMY_AGGR_POINTS   EQU 3 ;; Puntos de la celula agresiva, en decenas (30 puntos)
 
 ;;--------------------------------------

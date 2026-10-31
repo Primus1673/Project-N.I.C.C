@@ -29,6 +29,7 @@ wSpawnVar:     db
 wMoveShift:    db                            ;; Patron de movimiento de la celula normal, rotado cada fotograma (ver Enemies_Move)
 wBigPercent:   db                            ;; Probabilidad (0-100) de que una aparicion sea una celula grande
 wMoveShiftBig: db                            ;; Patron de movimiento de la celula grande
+wZigPercent:   db                            ;; Probabilidad (0-100) de que una aparicion sea una celula zigzag
 wAggrPercent:  db                            ;; Probabilidad (0-100) de que una aparicion sea una celula agresiva
 wSpawnRoll:    db                            ;; Tirada (0-99) con la que se elige el tipo de la proxima celula
 wAggrAcc:      db                            ;; Acumulador (0-99) que reparte los pasos de la agresiva: se mueve el AGGR_SPEED_PCT % de los pasos de la normal
@@ -81,17 +82,17 @@ Enemies_Init::
 ;;    Velocidad = (bits a 1) / 8 pixeles por fotograma. Las balas van a 1 px/fotograma: las celulas siempre son mas lentas.
 MACRO PhaseRow
    ASSERT \1 <= MAX_ENEMIES
-   ASSERT \5 + \7 <= 100
-   db \1, \2, \3, \4, \5, \6, \7
+   ASSERT \5 + \7 + \8 <= 100
+   db \1, \2, \3, \4, \5, \6, \7, \8
 ENDM
-DEF PHASE_ROW_SIZE EQU 7
+DEF PHASE_ROW_SIZE EQU 8
 PhaseTable:
-   ;;       max  min  var  normal         %grande  grande      %agresiva
-   PhaseRow   3, 100,  60, %00010001,       0, %00010000,   0   ;; Fase 1: normal 2/8 = 15 px/s   (sin grandes ni agresivas)
-   PhaseRow   4,  80,  50, %00100101,      20, %00010000,   0   ;; Fase 2: normal 3/8 = 22 px/s   grande 1/8 =  7 px/s
-   PhaseRow   5,  70,  40, %01010101,      20, %00010000,  10   ;; Fase 3: normal 4/8 = 30 px/s   grande 1/8 =  7 px/s
-   PhaseRow   5,  55,  35, %01010101,      25, %00010001,  15   ;; Fase 4: normal 4/8 = 30 px/s   grande 2/8 = 15 px/s
-   PhaseRow   6,  45,  35, %01101101,      30, %00010001,  20   ;; Fase 5: normal 5/8 = 37 px/s   grande 2/8 = 15 px/s
+   ;;       max  min  var  normal         %grande  grande      %agresiva  %zigzag
+   PhaseRow   3, 100,  60, %00010001,       0, %00010000,   0,   0   ;; Fase 1: normal 2/8 = 15 px/s   (sin grandes ni agresivas)
+   PhaseRow   4,  80,  50, %00100101,      20, %00010000,   0,  15   ;; Fase 2: normal 3/8 = 22 px/s   grande 1/8 =  7 px/s
+   PhaseRow   5,  70,  40, %01010101,      20, %00010000,  10,  15   ;; Fase 3: normal 4/8 = 30 px/s   grande 1/8 =  7 px/s
+   PhaseRow   5,  55,  35, %01010101,      25, %00010001,  15,  15   ;; Fase 4: normal 4/8 = 30 px/s   grande 2/8 = 15 px/s
+   PhaseRow   6,  45,  35, %01101101,      30, %00010001,  20,  15   ;; Fase 5: normal 5/8 = 37 px/s   grande 2/8 = 15 px/s
 ASSERT (@ - PhaseTable) == PHASE_ROW_SIZE * PHASE_COUNT
 
 ;;-----------------------------------------------------------------
@@ -103,8 +104,7 @@ Enemies_SetPhase::
    ld   d, 0
    add  a
    add  a
-   add  a                       ;; 8n
-   sub  e                       ;; 7n = n * PHASE_ROW_SIZE (la fase maxima es 4: cabe en 8 bits)
+   add  a                       ;; 8n = n * PHASE_ROW_SIZE (la fase maxima es 4: cabe en 8 bits)
    ld   e, a
    ld   hl, PhaseTable
    add  hl, de
@@ -120,8 +120,10 @@ Enemies_SetPhase::
    ld   [wBigPercent], a
    ld   a, [hl+]
    ld   [wMoveShiftBig], a
-   ld   a, [hl]
+   ld   a, [hl+]
    ld   [wAggrPercent], a
+   ld   a, [hl]
+   ld   [wZigPercent], a
    ret
 
 ;;-----------------------------------------------------------------
@@ -272,8 +274,8 @@ Enemies_ChooseType:
    ld   b, a
    ld   a, [wAggrPercent]
    cp   b
-   jr   z, .normal
-   jr   c, .normal              ;; %agresiva <= (tirada - %grande): normal
+   jr   z, .tryZig
+   jr   c, .tryZig              ;; %agresiva <= (tirada - %grande): no es agresiva
    ld   b, ENEMY_AGGR
    call Enemies_CountType
    cp   MAX_AGGR
@@ -281,6 +283,24 @@ Enemies_ChooseType:
    ld   a, AGGR_OFFSET
    ld   [wSpawnOff], a
    ld   a, ENEMY_AGGR
+   ret
+.tryZig:                        ;; B = tirada - %grande (>= %agresiva)
+   ld   a, [wAggrPercent]
+   ld   c, a
+   ld   a, b
+   sub  c
+   ld   b, a                    ;; B = tirada - %grande - %agresiva
+   ld   a, [wZigPercent]
+   cp   b
+   jr   z, .normal
+   jr   c, .normal
+   ld   b, ENEMY_ZIGZAG
+   call Enemies_CountType
+   cp   MAX_ZIG
+   jr   nc, .normal
+   xor  a
+   ld   [wSpawnOff], a
+   ld   a, ENEMY_ZIGZAG
    ret
 .normal:
    xor  a
@@ -373,6 +393,21 @@ Enemies_Spawn:
    ld   a, [wSpawnType]
    cp   ENEMY_NORMAL
    ret  z
+   cp   ENEMY_ZIGZAG
+   jr   nz, .needWarn
+   push hl                      ;; La zigzag entra sin aviso, con la onda en un punto al azar para que no vayan todas a la vez
+   dec  hl
+   dec  hl
+   dec  hl                      ;; HL -> direccion
+   call Random_Next
+   and  %11111000               ;; Contador de la onda (bits 3-7)
+   ld   b, a
+   ld   a, [hl]
+   or   b
+   ld   [hl], a
+   pop  hl
+   ret
+.needWarn:
    ld   de, wWarnType + ENEMY_SIZE - 1
    ld   b, ENEMY_SIZE
 .stash:                         ;; Copia la celula (de atras adelante) a wWarnType y libera su hueco
@@ -481,6 +516,7 @@ Enemies_Move:
    push hl                      ;; Guardamos el inicio de este enemigo
    inc  hl
    ld   a, [hl+]                ;; A = direccion (HL pasa a apuntar a X)
+   and  %00000111               ;; (los bits altos son el contador de la onda de la zigzag)
    ld   d, a
    inc  hl
    inc  hl                      ;; HL -> vida (= tamaño)
@@ -540,6 +576,9 @@ Enemies_Move:
    jr   c, .kill                ;; Ha pasado el lado superior
 .moved:
    pop  hl
+   ld   a, [hl]
+   cp   ENEMY_ZIGZAG
+   call z, Enemy_Zig
    jr   .next
 .kill:
    pop  hl
@@ -551,6 +590,50 @@ Enemies_Move:
    ENDR
    dec  b
    jp   nz, .loop
+   ret
+
+;;-----------------------------------------------------------------
+;; Enemy_Zig: Onda de la celula zigzag: ademas de avanzar, se desplaza 1 pixel en el eje perpendicular a su direccion, hacia un
+;;    lado durante 8 pasos y hacia el otro durante otros 8, a ZIG_STEP_PX pixeles por paso (recorre 8 * ZIG_STEP_PX pixeles). El contador (bits 3-7 del byte de direccion) cuenta
+;;    los pasos; su bit 6 elige el lado. Se queda quieta en el eje lateral al tocar el borde de la zona de juego.
+;;    Entrada: HL = inicio de la celula     Conserva HL y BC. Destruye: A, DE
+Enemy_Zig:
+   push bc
+   push hl
+   inc  hl
+   ld   a, [hl]
+   add  8                       ;; Un paso mas en el contador
+   ld   [hl+], a                ;; HL -> X
+   ld   d, a
+   and  %00000111
+   cp   DIR_LEFT
+   ld   b, PLAY_MIN_X           ;; (ld no toca los flags)
+   ld   c, PLAY_MAX_X
+   jr   c, .go                  ;; Va arriba o abajo: se desplaza en X
+   inc  hl                      ;; Va a un lado: se desplaza en Y
+   ld   b, PLAY_MIN_Y
+   ld   c, PLAY_MAX_Y
+.go:
+   ld   e, ZIG_STEP_PX          ;; Se desplaza ZIG_STEP_PX pixeles por paso (de 1 en 1, parando en el borde)
+.lat:
+   ld   a, [hl]
+   bit  6, d
+   jr   nz, .plus
+   cp   b
+   jr   z, .done
+   dec  a
+   jr   .store
+.plus:
+   cp   c
+   jr   nc, .done
+   inc  a
+.store:
+   ld   [hl], a
+   dec  e
+   jr   nz, .lat
+.done:
+   pop  hl
+   pop  bc
    ret
 
 ;;-----------------------------------------------------------------
@@ -706,7 +789,7 @@ Enemies_CheckBullets:
 .bulletLoop:
    ld   a, [de]                 ;; Direccion de la bala
    and  a
-   jr   z, .nextBullet          ;; Hueco libre
+   jp   z, .nextBullet          ;; Hueco libre
    inc  de                      ;; DE -> X de la bala
    call Collide_Box
    dec  de                      ;; (dec de no toca los flags)
@@ -745,6 +828,10 @@ Enemies_CheckBullets:
    ld   a, [hl]
    cp   ENEMY_AGGR
    ld   a, ENEMY_AGGR_POINTS
+   jr   z, .points
+   ld   a, [hl]
+   cp   ENEMY_ZIGZAG
+   ld   a, ENEMY_ZIG_POINTS
    jr   z, .points
    ld   a, ENEMY_NORMAL_POINTS
 .points:
@@ -866,6 +953,10 @@ Enemies_ShieldHit:
    ld   a, [hl]
    cp   ENEMY_AGGR
    ld   a, ENEMY_AGGR_POINTS
+   jr   z, .points
+   ld   a, [hl]
+   cp   ENEMY_ZIGZAG
+   ld   a, ENEMY_ZIG_POINTS
    jr   z, .points
    ld   a, ENEMY_NORMAL_POINTS
 .points:
@@ -993,6 +1084,11 @@ Enemy_DrawSprites:
    cp   ENEMY_AGGR
    ld   a, [wDrawN]
    jr   z, .aggr
+   ld   a, [wDrawType]
+   cp   ENEMY_ZIGZAG
+   ld   a, TILE_ZIGZAG
+   jr   z, .tile
+   ld   a, [wDrawN]
    cp   2
    ld   a, TILE_ENEMY1
    jr   c, .tile                ;; N = 1
