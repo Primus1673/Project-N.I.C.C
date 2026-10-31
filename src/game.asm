@@ -445,12 +445,15 @@ Game_Draw::
    jr   nz, .breakMsg
    call Player_Draw
    call Bullets_Draw
-   jp   Enemies_Draw
+   ld   de, wShadowOAM + SPR_SLOT_ENEMIES * OAM_ENTRY_SIZE
+   call Shield_Draw          ;; El anillo del escudo (si esta activo) antes que los enemigos
+   jp   Enemies_DrawAt
 
 .paused:                     ;; El juego congelado a la vista, con "PAUSA" en negro encima
    call Player_Draw
    call Bullets_Draw
    ld   de, wShadowOAM + SPR_SLOT_ENEMIES * OAM_ENTRY_SIZE
+   call Shield_Draw
    ld   a, 1
    ld   [wTextDark], a
    ld   hl, StrPaused
@@ -465,6 +468,7 @@ Game_Draw::
    call Player_Draw
    call Bullets_Draw
    ld   de, wShadowOAM + SPR_SLOT_ENEMIES * OAM_ENTRY_SIZE
+   call Shield_Draw
    ld   a, 1
    ld   [wTextDark], a
    ld   hl, StrPhase

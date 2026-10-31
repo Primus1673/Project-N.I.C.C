@@ -43,7 +43,7 @@ Hud_Update::
    ;;-- Barra de energia: HUD_BAR_TILES tiles; cada uno muestra 0 a 8 pixeles rellenos (tiles TILE_BAR + n).
    ;;   Llena y sin activar, parpadea (se ve cuando el bit 4 de wEnergyBlink vale 1).
    ld   hl, _SCRN0 + HUD_BAR_COL
-   ld   a, [wMissileMode]
+   ld   a, [wShield]
    and  a
    jr   nz, .barShow
    ld   a, [wEnergy]

@@ -42,6 +42,7 @@ wWarnDir:      db
 wWarnX:        db
 wWarnY:        db
 wWarnHp:       db
+wHitShift:    db                            ;; Enemies_CheckBullets: pixeles que se corre una celula al encogerse
 wHitMissile:  db                            ;; Enemies_CheckBullets: $80 si el impacto es de un misil
 wHitSize:      db                            ;; ... tamaño en tiles de la celula antes del impacto
 wDrawType:     db                            ;; Enemies_Draw: tipo de la celula actual
@@ -698,7 +699,7 @@ Enemies_CheckBullets:
 .enemyLoop:
    ld   a, [hl]                 ;; Tipo
    and  a
-   jr   z, .nextEnemy           ;; Hueco libre
+   jp   z, .nextEnemy           ;; Hueco libre
    push bc                      ;; Guardamos el contador de enemigos
    ld   de, wBullets
    ld   c, MAX_BULLETS
@@ -725,7 +726,13 @@ Enemies_CheckBullets:
    ld   a, [wHitMissile]
    and  a
    jr   z, .normalHit
-   ld   [hl], 1                 ;; Misil: la vida baja a 1 y el impacto la deja en 0
+   ld   a, [hl]
+   cp   MISSILE_DAMAGE + 1
+   jr   c, .missileKill
+   dec  [hl]                    ;; Misil contra una celula grande (vida 3): quita 1 de vida de mas (y luego la 1 de siempre)
+   jr   .normalHit
+.missileKill:
+   ld   [hl], 1                 ;; Misil contra una de vida 1-2: el impacto la deja en 0
 .normalHit:
    dec  [hl]                    ;; Le quitamos 1 de vida
    pop  hl                      ;; (pop no modifica los flags: sigue valiendo el resultado de dec)
@@ -766,14 +773,24 @@ Enemies_CheckBullets:
    pop  af
    call Combo_Kill              ;; Cuenta la baja en el combo y suma los puntos con el multiplicador (conserva BC, DE y HL)
    jr   .enemyDone              ;; Ya no hay que comprobar mas balas contra esta celula
-.survived:                      ;; Se encoge, conservando el centro
+.survived:                      ;; Se encoge, conservando el centro: 4 pixeles por cada tile de tamaño que pierde (1 con una bala, 2 con un misil)
+   push hl
+   REPT ENEMY_SIZE - 1
+      inc  hl
+   ENDR
+   ld   a, [wHitSize]
+   sub  [hl]                    ;; Tiles perdidos
+   add  a
+   add  a
+   ld   [wHitShift], a          ;; Pixeles que se corre la esquina
+   pop  hl
    inc  hl
    inc  hl                      ;; HL -> X
-   ld   a, [hl]
-   add  TILE_SIZE / 2
+   ld   a, [wHitShift]
+   add  [hl]
    ld   [hl+], a
-   ld   a, [hl]
-   add  TILE_SIZE / 2
+   ld   a, [wHitShift]
+   add  [hl]
    ld   [hl], a
    dec  hl
    dec  hl
@@ -783,7 +800,7 @@ Enemies_CheckBullets:
       inc  de                   ;; Siguiente bala
    ENDR
    dec  c
-   jr   nz, .bulletLoop
+   jp   nz, .bulletLoop
 .enemyDone:
    pop  bc
 .nextEnemy:
@@ -791,7 +808,7 @@ Enemies_CheckBullets:
       inc  hl                   ;; Siguiente enemigo
    ENDR
    dec  b
-   jr   nz, .enemyLoop
+   jp   nz, .enemyLoop
    ret
 
 ;;-----------------------------------------------------------------
@@ -800,6 +817,9 @@ Enemies_CheckBullets:
 ;;    Necesita que wPlayerY este justo detras de wPlayerX en memoria (player.asm).
 ;;    Destruye: A, B, DE, HL
 Enemies_CheckPlayer:
+   ld   a, [wShield]
+   and  a
+   jr   nz, Enemies_ShieldHit   ;; Con el escudo: las celulas que tocan la nave explotan y no hay daño
    ld   a, [wInvuln]
    and  a
    ret  nz                      ;; Invulnerable
@@ -815,6 +835,65 @@ Enemies_CheckPlayer:
    xor  a
    ld   [hl], a                 ;; La celula desaparece
    jp   Game_PlayerHit          ;; Pierde una vida (y vuelve de aqui con su ret)
+.next:
+   REPT ENEMY_SIZE
+      inc  hl
+   ENDR
+   dec  b
+   jr   nz, .loop
+   ret
+
+;;-----------------------------------------------------------------
+;; Enemies_ShieldHit: Escudo activo: cada celula que toca a la nave explota (en su centro) y desaparece como si la hubieras matado
+;;    (puntos de su tipo con el multiplicador del combo, y suma a la cadena), pero sin soltar gota; no quita vida
+;;    Destruye: A, BC, DE, HL
+Enemies_ShieldHit:
+   ld   hl, wEnemies
+   ld   b, MAX_ENEMIES
+.loop:
+   ld   a, [hl]                 ;; Tipo
+   and  a
+   jr   z, .next
+   ld   de, wPlayerX
+   call Collide_Box
+   jr   nc, .next
+   push hl
+   push bc
+   ld   a, [hl]                 ;; Tipo, para saber los puntos
+   cp   ENEMY_BIG
+   ld   a, ENEMY_BIG_POINTS     ;; (ld no toca los flags)
+   jr   z, .points
+   ld   a, [hl]
+   cp   ENEMY_AGGR
+   ld   a, ENEMY_AGGR_POINTS
+   jr   z, .points
+   ld   a, ENEMY_NORMAL_POINTS
+.points:
+   push af
+   xor  a
+   ld   [hl], a                 ;; La celula desaparece
+   inc  hl
+   inc  hl                      ;; HL -> X
+   ld   a, [hl+]
+   ld   b, a                    ;; B = X
+   ld   a, [hl+]
+   ld   c, a                    ;; C = Y
+   ld   a, [hl]                 ;; tamaño en tiles
+   dec  a
+   add  a
+   add  a                       ;; 4 * (tamaño - 1): hasta el centro de la celula
+   ld   e, a
+   ld   a, b
+   add  e
+   ld   b, a
+   ld   a, c
+   add  e
+   ld   c, a
+   call Explo_Spawn
+   pop  af
+   call Combo_Kill              ;; Cuenta como una baja mas: suma sus puntos con el multiplicador y alarga el combo
+   pop  bc
+   pop  hl
 .next:
    REPT ENEMY_SIZE
       inc  hl

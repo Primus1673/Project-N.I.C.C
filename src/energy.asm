@@ -4,8 +4,9 @@
 ;;   - Al morir una celula, con probabilidad DROP_PERCENT suelta una gota de energia y, si falta alguna vida, con probabilidad
 ;;     HEART_PERCENT un corazon que da 1 vida al recogerlo (Drop_Roll). La gota cae despacio hacia abajo y
 ;;     desaparece al llegar al marco inferior. Si el jugador la toca, la barra sube ENERGY_PER_DROP pixeles (maximo ENERGY_MAX).
-;;   - Con la barra llena, SELECT activa el modo misiles (wMissileMode = 1): bullets.asm dispara misiles guiados en vez de balas.
-;;     Mientras dura, la barra baja 1 pixel cada ENERGY_DRAIN_FRAMES fotogramas; al llegar a 0 el modo se desactiva.
+;;   - Con la barra llena, SELECT activa el ESCUDO (wShield = 1): mientras dura no se pierde ninguna vida y las celulas que tocan la
+;;     nave explotan y dan sus puntos como una baja mas (Enemies_ShieldHit). Se dibuja como un anillo alrededor de la nave (Shield_Draw), que parpadea
+;;     al final. La barra baja 1 pixel cada ENERGY_DRAIN_FRAMES fotogramas; al llegar a 0 el escudo se desactiva.
 ;;     (Se pueden seguir recogiendo gotas con el modo activo: alargan el tiempo.)
 ;;   - La barra se dibuja en el HUD (hud.asm). Con la barra llena y sin activar, parpadea para avisar de que SELECT esta listo.
 ;;   - Solo avanza mientras se juega (Game_Update); la pausa y las pantallas de fase la congelan.
@@ -17,7 +18,7 @@ INCLUDE "constants.inc"
 SECTION "Energy Variables", WRAM0
 
 wEnergy::      db                  ;; Energia: 0 a ENERGY_MAX (pixeles de la barra)
-wMissileMode:: db                  ;; 1 = modo misiles activo
+wShield:: db                  ;; 1 = escudo activo
 wEnergyDrain:  db                  ;; Fotogramas que faltan para bajar 1 pixel la barra
 wEnergyBlink:: db                  ;; Contador del parpadeo de "barra llena" (el bit 4 decide si se ve)
 wDropTick:     db                  ;; Cuenta fotogramas para que las gotas caigan despacio
@@ -32,7 +33,7 @@ SECTION "Energy", ROM0
 Energy_Init::
    xor  a
    ld   [wEnergy], a
-   ld   [wMissileMode], a
+   ld   [wShield], a
    ld   [wEnergyDrain], a
    ld   [wEnergyBlink], a
    ld   [wDropTick], a
@@ -69,21 +70,32 @@ Energy_Update::
    ldh  a, [hInputNew]
    bit  BTNB_SELECT, a
    jr   z, .noSelect
-   ld   a, [wMissileMode]
+   ld   a, [wShield]
    and  a
    jr   nz, .noSelect           ;; Ya esta activo
    ld   a, [wEnergy]
    cp   ENERGY_MAX
    jr   nz, .noSelect           ;; La barra no esta llena
    ld   a, 1
-   ld   [wMissileMode], a
+   ld   [wShield], a
    ld   [wHudDirty], a
    ld   a, ENERGY_DRAIN_FRAMES
    ld   [wEnergyDrain], a
 .noSelect:
-   ld   a, [wMissileMode]
+   ld   a, [wShield]
    and  a
    jr   z, .idle
+   ld   a, [wEnergy]
+   and  a
+   jr   nz, .shieldOn
+   xor  a                       ;; La barra se ha vaciado (p. ej. con un disparo cargado): se acaba el escudo
+   ld   [wShield], a
+   inc  a
+   ld   [wHudDirty], a
+   ret
+.shieldOn:
+   ld   hl, wEnergyBlink        ;; (el escudo parpadea al acabarse con este contador, Shield_Draw)
+   inc  [hl]
    ld   a, [wEnergyDrain]       ;; Modo activo: la barra baja 1 pixel cada ENERGY_DRAIN_FRAMES
    dec  a
    ld   [wEnergyDrain], a
@@ -97,7 +109,7 @@ Energy_Update::
    ld   [wEnergy], a
    ret  nz
    xor  a
-   ld   [wMissileMode], a       ;; Barra vacia: se acabaron los misiles
+   ld   [wShield], a       ;; Barra vacia: se acabo el escudo
    ret
 .idle:
    ld   a, [wEnergy]
@@ -111,6 +123,45 @@ Energy_Update::
    ld   a, 1
    ld   [wHudDirty], a
    ret
+
+;;-----------------------------------------------------------------
+;; Shield_Draw: Dibuja el anillo del escudo alrededor de la nave (4 sprites de 8x8, centrado en ella). Cuando a la barra le
+;;    quedan SHIELD_WARN_PX pixeles o menos, parpadea (se ve solo con el bit 2 de wEnergyBlink a 1)
+;;    Entrada: DE = siguiente sprite libre     Salida: DE avanza     Destruye: A, BC, HL
+Shield_Draw::
+   ld   a, [wShield]
+   and  a
+   ret  z                       ;; Sin escudo
+   ld   a, [wEnergy]
+   cp   SHIELD_WARN_PX + 1
+   jr   nc, .visible
+   ld   a, [wEnergyBlink]
+   bit  2, a
+   ret  z                       ;; Parte oculta del parpadeo
+.visible:
+   ld   a, [wPlayerX]
+   sub  TILE_SIZE / 2
+   ld   b, a                    ;; B = X de la esquina de arriba a la izquierda del anillo
+   ld   a, [wPlayerY]
+   sub  TILE_SIZE / 2
+   ld   c, a                    ;; C = Y
+   ld   a, TILE_SHIELD
+   call Put_Sprite              ;; Arriba a la izquierda
+   ld   a, b
+   add  TILE_SIZE
+   ld   b, a
+   ld   a, TILE_SHIELD + 1
+   call Put_Sprite              ;; Arriba a la derecha
+   ld   a, c
+   add  TILE_SIZE
+   ld   c, a
+   ld   a, TILE_SHIELD + 3
+   call Put_Sprite              ;; Abajo a la derecha
+   ld   a, b
+   sub  TILE_SIZE
+   ld   b, a
+   ld   a, TILE_SHIELD + 2
+   jp   Put_Sprite              ;; Abajo a la izquierda
 
 ;;-----------------------------------------------------------------
 ;; Life_Add: Recoge un corazon: +1 vida (como mucho PLAYER_LIVES)

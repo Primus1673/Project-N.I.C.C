@@ -164,16 +164,17 @@ DEF WARN_BLINK_BIT EQU 2    ;; La flecha se ve cuando este bit del contador esta
 ;;--------------------------------------
 ;;-- Energia celular, gotas y misiles (energy.asm, bullets.asm)
 ;;    Algunas celulas sueltan una gota al morir (DROP_PERCENT %). La gota cae y, si el jugador la toca, rellena la barra de
-;;    energia (ENERGY_PER_DROP pixeles de ENERGY_MAX). Con la barra llena, SELECT activa el modo misiles: A y B disparan misiles
-;;    guiados en vez de balas, y la barra se vacia sola (1 pixel cada ENERGY_DRAIN_FRAMES fotogramas = 8 s en total).
+;;    energia (ENERGY_PER_DROP pixeles de ENERGY_MAX). Con la barra llena, SELECT activa el ESCUDO: no se pierden vidas y las celulas que
+;;    tocan a la nave explotan; la barra se vacia sola (1 pixel cada ENERGY_DRAIN_FRAMES fotogramas = 8 s en total).
 DEF ENERGY_MAX      EQU 40   ;; Barra llena: 5 tiles de 8 pixeles
 DEF ENERGY_PER_DROP EQU 5    ;; Cada gota: 1/8 de la barra
-DEF ENERGY_DRAIN_FRAMES EQU 12   ;; Con el modo misiles activo, la barra baja 1 pixel cada 12 fotogramas: 40 * 12 = 480 = 8 s
+DEF ENERGY_DRAIN_FRAMES EQU 12   ;; Con el escudo activo, la barra baja 1 pixel cada 12 fotogramas: 40 * 12 = 480 = 8 s
 DEF DROP_PERCENT    EQU 25   ;; Probabilidad (0-100) de que una celula suelte una gota de energia al morir
 DEF HEART_PERCENT   EQU 4    ;; Probabilidad (0-100) de que suelte un corazon (solo si falta alguna vida)
 DEF DROP_ENERGY     EQU 1    ;; Tipo de gota: energia
 DEF DROP_HEART      EQU 2    ;; ... corazon: da 1 vida
 DEF TILE_HEART_DROP EQU 167  ;; Corazon que cae: 1 tile de src/sprites/corazon.z80 (a continuacion de los 36 del virus)
+DEF TILE_SHIELD     EQU 168  ;; Escudo: anillo de 16x16 en 4 tiles (arriba-izq, arriba-der, abajo-izq, abajo-der) de src/sprites/escudo.z80
 DEF MAX_DROPS       EQU 3    ;; Gotas a la vez (1 sprite cada una)
 DEF DROP_SIZE       EQU 3    ;; [tipo (0 = hueco libre), X, Y]
 DEF DROP_SLOW       EQU 3    ;; La gota baja 1 pixel cada DROP_SLOW fotogramas
@@ -184,7 +185,12 @@ ASSERT ENERGY_MAX == HUD_BAR_TILES * TILE_SIZE
 ASSERT HUD_BAR_COL + HUD_BAR_TILES <= HUD_COMBO_COL
 DEF MISSILE_FLAG    EQU $80  ;; En la direccion de una bala: bit 7 = es un misil (los bits 0-2 son hacia donde apunta)
 DEF MISSILE_SPEED   EQU 2    ;; Pixeles por fotograma (las balas van a 1)
-DEF MISSILE_COOLDOWN EQU 30  ;; Recarga por boton en modo misiles (0,5 s)
+DEF CHARGE_FRAMES   EQU 120  ;; Disparo cargado: fotogramas manteniendo A o B para cargarlo (2 s)
+DEF MISSILE_COST    EQU ENERGY_MAX / 4  ;; Cada disparo cargado gasta 1/4 de la barra (10 pixeles = 2 gotas); sin energia no se puede cargar
+DEF MISSILE_DAMAGE  EQU 2    ;; Vida que quita un misil: mata a la normal (1) y a la agresiva (2), la grande (3) aguanta un misil y se queda en 1
+DEF CHARGE_BLINK_START EQU 15 ;; La nave empieza a parpadear al cargar tras estos fotogramas (un toque normal no parpadea)
+DEF CHARGE_FLASH    EQU 6    ;; Destello de pantalla al completarse la carga (fotogramas de wFlash)
+DEF SHIELD_WARN_PX  EQU 10   ;; Cuando a la barra le quedan estos pixeles (2 s), el escudo parpadea para avisar de que se acaba
 DEF OAM_XFLIP       EQU $20
 DEF OAM_YFLIP       EQU $40
 

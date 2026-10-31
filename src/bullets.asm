@@ -3,12 +3,18 @@
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 ;;   - Boton A: dispara una bala hacia ARRIBA y otra hacia ABAJO a la vez.
 ;;   - Boton B: dispara una bala hacia la IZQUIERDA y otra hacia la DERECHA a la vez.
-;;   - Cada boton tiene su propia recarga de SHOT_COOLDOWN fotogramas (1 segundo). Si se mantiene pulsado, dispara
-;;     de nuevo en cuanto termina la recarga. (Para obligar a soltar y volver a pulsar, ver la nota en Bullets_Update.)
+;;   - Un toque dispara al pulsar (si el boton ya ha recargado: SHOT_COOLDOWN fotogramas, 1 segundo, por boton). Mantener el
+;;     boton NO repite el disparo: se esta CARGANDO. Si se mantiene CHARGE_FRAMES fotogramas (2 s) y se suelta, sale el DISPARO
+;;     CARGADO: los mismos dos disparos pero como MISILES guiados. Cada uno cuesta MISSILE_COST de la barra de energia; sin ella no se
+;;     puede ni empezar a cargar.
+;;   - Solo se puede cargar con un boton a la vez: el que empieza primero; el otro sigue disparando de forma normal con toques, pero
+;;     no carga hasta que el primero se suelte (asi nunca salen 4 misiles a la vez).
+;;   - Mientras se carga, la nave parpadea cada vez mas rapido (wChargeHide, lo lee Player_Draw) y, al completarse, queda
+;;     fija con un destello de pantalla.
 ;;   - Las balas avanzan en linea recta y desaparecen al llegar al marco de la pantalla.
-;;   - Con el modo misiles activo (energy.asm), A y B disparan MISILES en vez de balas: van guardados en la misma tabla, con el
-;;     bit 7 (MISSILE_FLAG) de la direccion a 1. Un misil va a MISSILE_SPEED px/fotograma hacia la celula mas cercana (Missile_Step)
-;;     y mata de un golpe a cualquier celula. Su direccion (bits 0-2) es hacia donde apunta, para dibujarlo girado.
+;;   - Los misiles van guardados en la misma tabla, con el bit 7 (MISSILE_FLAG) de la direccion a 1. Un misil va a MISSILE_SPEED
+;;     px/fotograma hacia la celula mas cercana (Missile_Step) y mata de un golpe a cualquier celula. Su direccion (bits 0-2) es
+;;     hacia donde apunta, para dibujarlo girado.
 ;;   - Hay un conjunto fijo de MAX_BULLETS balas. Cada una es [direccion, X, Y]; direccion 0 = hueco libre.
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
@@ -19,8 +25,11 @@ SECTION "Bullets Variables", WRAM0
 wBullets::   ds BULLET_SIZE * MAX_BULLETS    ;; Tabla de balas: [direccion, X, Y] x MAX_BULLETS
 wCooldownA:: db                              ;; Fotogramas que faltan para poder disparar con A
 wCooldownB:: db                              ;; Fotogramas que faltan para poder disparar con B
-wShotFlag:   db                              ;; 0 (balas) o MISSILE_FLAG (modo misiles): se suma a la direccion de lo que se dispara
-wShotCd:     db                              ;; Recarga de los botones en el modo actual
+wShotFlag:   db                              ;; 0 (balas) o MISSILE_FLAG (disparo cargado): se suma a la direccion de lo que se dispara
+wChargeA:    db                              ;; Fotogramas que lleva cargando el boton A (satura en CHARGE_FRAMES)
+wChargeB:    db                              ;; ... y el boton B
+wChargeHide:: db                             ;; 1 = la nave esta en la fase oculta del parpadeo de carga (Player_Draw)
+wChargeBlink: db                             ;; Cuenta atras hasta el proximo cambio de fase del parpadeo de carga
 wDrawDirB:   db                              ;; Bullets_Draw: direccion de la bala actual
 wMsX:        db                              ;; Missile_Step: centro del misil...
 wMsY:        db
@@ -38,6 +47,76 @@ wBestIdx:    db                              ;; Hueco de la celula elegida
 
 SECTION "Bullets", ROM0
 
+;; ShotButton boton, carga, recarga, direccion1, direccion2, carga_del_otro_boton: gestiona un boton de disparo.
+;;    Al pulsarlo: dispara una bala por direccion si ha recargado y empieza a contar la carga.
+;;    Mientras se mantiene: la carga sube hasta CHARGE_FRAMES (y al llegar hay un destello de pantalla).
+;;    Al soltarlo con la carga completa: dispara los dos misiles guiados.
+MACRO ShotButton
+   ldh  a, [hInput]
+   bit  \1, a
+   jr   z, .released\@
+   ldh  a, [hInputNew]
+   bit  \1, a
+   jr   z, .holding\@
+   xor  a
+   ld   [\2], a                 ;; Pulsacion nueva: la carga empieza de cero
+   ld   a, [\3]
+   and  a
+   jr   nz, .holding\@          ;; Aun recargando: este toque no dispara
+   ld   a, SHOT_COOLDOWN
+   ld   [\3], a
+   ld   c, \4
+   call Bullets_Spawn
+   ld   c, \5
+   call Bullets_Spawn
+.holding\@:
+   ld   a, [\6]
+   and  a
+   jr   nz, .done\@             ;; El otro boton ya esta cargando: solo se puede cargar con uno a la vez
+   ld   a, [\2]
+   and  a
+   jr   nz, .have\@             ;; Ya esta cargando
+   ld   a, [wEnergy]
+   cp   MISSILE_COST
+   jr   c, .done\@              ;; Sin energia suficiente no se empieza a cargar
+.have\@:
+   ld   a, [\2]
+   cp   CHARGE_FRAMES
+   jr   nc, .done\@             ;; Ya cargado
+   inc  a
+   ld   [\2], a
+   cp   CHARGE_FRAMES
+   jr   nz, .done\@
+   ld   a, CHARGE_FLASH
+   ld   [wFlash], a             ;; Carga completa: destello
+   jr   .done\@
+.released\@:
+   ld   a, [\2]
+   cp   CHARGE_FRAMES
+   jr   c, .clear\@             ;; Soltado antes de tiempo: nada
+   ld   a, [wEnergy]
+   cp   MISSILE_COST
+   jr   c, .clear\@             ;; La energia ha bajado (escudo) y ya no llega: se pierde la carga
+   sub  MISSILE_COST
+   ld   [wEnergy], a            ;; El disparo cargado cuesta energia
+   ld   a, 1
+   ld   [wHudDirty], a
+   ld   a, MISSILE_FLAG
+   ld   [wShotFlag], a
+   ld   c, \4
+   call Bullets_Spawn
+   ld   c, \5
+   call Bullets_Spawn
+   xor  a
+   ld   [wShotFlag], a
+   ld   a, SHOT_COOLDOWN
+   ld   [\3], a
+.clear\@:
+   xor  a
+   ld   [\2], a
+.done\@:
+ENDM
+
 ;;-----------------------------------------------------------------
 ;; Bullets_Init: Elimina todas las balas y reinicia las recargas
 ;;    Destruye: A, BC, HL
@@ -49,6 +128,12 @@ Bullets_Init::
    xor  a
    ld   [wCooldownA], a
    ld   [wCooldownB], a
+   ld   [wChargeA], a
+   ld   [wChargeB], a
+   ld   [wChargeHide], a
+   ld   [wShotFlag], a
+   inc  a
+   ld   [wChargeBlink], a
    ret
 
 ;;-----------------------------------------------------------------
@@ -82,24 +167,7 @@ Bullets_Spawn:
 ;; Bullets_Update: Gestiona los disparos (recargas, nuevas balas) y mueve las balas existentes
 ;;    Destruye: A, B, C, D, HL
 Bullets_Update::
-   ;;--------------------------------------
-   ;;-- Modo de disparo: balas normales o misiles
-   ld   a, [wMissileMode]
-   and  a
-   jr   z, .bulletMode
-   ld   a, MISSILE_FLAG
-   ld   [wShotFlag], a
-   ld   a, MISSILE_COOLDOWN
-   ld   [wShotCd], a
-   jr   .modeSet
-.bulletMode:
-   xor  a
-   ld   [wShotFlag], a
-   ld   a, SHOT_COOLDOWN
-   ld   [wShotCd], a
-.modeSet:
-
-   ;;--------------------------------------
+;;--------------------------------------
    ;;-- Recargas: cada fotograma bajan en 1 hasta llegar a 0
    ld   a, [wCooldownA]
    and  a
@@ -115,38 +183,48 @@ Bullets_Update::
 .cooldownBready:
 
    ;;--------------------------------------
-   ;;-- Boton A: arriba + abajo
-   ;;   Nota: se usa hInput (boton MANTENIDO). Para exigir una pulsacion nueva por disparo,
-   ;;   cambiar aqui "hInput" por "hInputNew".
-   ldh  a, [hInput]
-   ld   b, a
-   bit  BTNB_A, b
-   jr   z, .noShotA
-   ld   a, [wCooldownA]
-   and  a
-   jr   nz, .noShotA            ;; Aun recargando
-   ld   a, [wShotCd]
-   ld   [wCooldownA], a
-   ld   c, BULLET_UP
-   call Bullets_Spawn
-   ld   c, BULLET_DOWN
-   call Bullets_Spawn
-.noShotA:
+   ;;-- Botones A (arriba + abajo) y B (izquierda + derecha)
+   ShotButton BTNB_A, wChargeA, wCooldownA, BULLET_UP, BULLET_DOWN, wChargeB
+   ShotButton BTNB_B, wChargeB, wCooldownB, BULLET_LEFT, BULLET_RIGHT, wChargeA
 
    ;;--------------------------------------
-   ;;-- Boton B: izquierda + derecha
-   bit  BTNB_B, b
-   jr   z, .noShotB
-   ld   a, [wCooldownB]
-   and  a
-   jr   nz, .noShotB
-   ld   a, [wShotCd]
-   ld   [wCooldownB], a
-   ld   c, BULLET_LEFT
-   call Bullets_Spawn
-   ld   c, BULLET_RIGHT
-   call Bullets_Spawn
-.noShotB:
+   ;;-- Parpadeo de la nave mientras se carga: empieza a los CHARGE_BLINK_START fotogramas y se acelera; completa la carga, fija
+   ld   a, [wChargeA]
+   ld   c, a
+   ld   a, [wChargeB]
+   cp   c
+   jr   c, .chargeKnown
+   ld   c, a                    ;; C = la mayor de las dos cargas
+.chargeKnown:
+   ld   a, c
+   cp   CHARGE_BLINK_START
+   jr   c, .noBlink
+   cp   CHARGE_FRAMES
+   jr   nc, .noBlink
+   ld   a, [wChargeBlink]
+   dec  a
+   ld   [wChargeBlink], a
+   jr   nz, .blinkDone
+   ld   a, [wChargeHide]
+   xor  1
+   ld   [wChargeHide], a        ;; Cambia de fase
+   ld   a, CHARGE_FRAMES
+   sub  c
+   srl  a
+   srl  a
+   srl  a                       ;; (lo que falta) / 8 fotogramas: cada vez mas rapido
+   cp   2
+   jr   nc, .reload
+   ld   a, 2                    ;; Semiperiodo minimo
+.reload:
+   ld   [wChargeBlink], a
+   jr   .blinkDone
+.noBlink:
+   xor  a
+   ld   [wChargeHide], a
+   inc  a
+   ld   [wChargeBlink], a
+.blinkDone:
 
    ;;--------------------------------------
    ;;-- Mover todas las balas existentes. Si una saldria de la zona de juego (tocaria el marco), desaparece.

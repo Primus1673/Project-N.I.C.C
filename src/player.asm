@@ -86,6 +86,7 @@ Player_Update::
 ;;    El DMA lo copiara a la OAM real en el proximo VBlank
 ;;    - Con la partida perdida la nave desaparece.
 ;;    - Durante la invulnerabilidad parpadea (oculta mientras el bit BLINK_MASK de wInvuln vale 1).
+;;    - Mientras se carga el disparo parpadea (oculta con wChargeHide = 1).
 ;;    Destruye: A, HL
 Player_Draw::
    ld   a, [wGameState]
@@ -94,6 +95,9 @@ Player_Draw::
    ld   a, [wInvuln]
    and  BLINK_MASK
    jr   nz, .hide            ;; Fase "apagada" del parpadeo
+   ld   a, [wChargeHide]
+   and  a
+   jr   nz, .hide            ;; Parpadeo de la carga del disparo (bullets.asm)
    ld   hl, wShadowOAM
    ld   a, [wPlayerY]
    add  OAM_Y_OFFSET
