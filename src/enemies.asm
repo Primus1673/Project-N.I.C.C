@@ -29,6 +29,11 @@ wSpawnVar:     db
 wMoveShift:    db                            ;; Patron de movimiento de la celula normal, rotado cada fotograma (ver Enemies_Move)
 wBigPercent:   db                            ;; Probabilidad (0-100) de que una aparicion sea una celula grande
 wMoveShiftBig: db                            ;; Patron de movimiento de la celula grande
+wDivPercent:   db                            ;; Probabilidad (0-100) de que una aparicion sea una celula divisora
+wMoveShiftSplit: db                          ;; Patron de movimiento de las celulas hijas (fijo: ver SPLIT_PATTERN)
+wSplitDir:     db                            ;; Enemies_Split: direccion del padre
+wSplitX:       db                            ;; ... centro del padre (donde nacen las hijas)
+wSplitY:       db
 wZigPercent:   db                            ;; Probabilidad (0-100) de que una aparicion sea una celula zigzag
 wAggrPercent:  db                            ;; Probabilidad (0-100) de que una aparicion sea una celula agresiva
 wSpawnRoll:    db                            ;; Tirada (0-99) con la que se elige el tipo de la proxima celula
@@ -82,17 +87,17 @@ Enemies_Init::
 ;;    Velocidad = (bits a 1) / 8 pixeles por fotograma. Las balas van a 1 px/fotograma: las celulas siempre son mas lentas.
 MACRO PhaseRow
    ASSERT \1 <= MAX_ENEMIES
-   ASSERT \5 + \7 + \8 <= 100
-   db \1, \2, \3, \4, \5, \6, \7, \8
+   ASSERT \5 + \7 + \8 + \9 <= 100
+   db \1, \2, \3, \4, \5, \6, \7, \8, \9
 ENDM
-DEF PHASE_ROW_SIZE EQU 8
+DEF PHASE_ROW_SIZE EQU 9
 PhaseTable:
-   ;;       max  min  var  normal         %grande  grande      %agresiva  %zigzag
-   PhaseRow   3, 100,  60, %00010001,       0, %00010000,   0,   0   ;; Fase 1: normal 2/8 = 15 px/s   (sin grandes ni agresivas)
-   PhaseRow   4,  80,  50, %00100101,      20, %00010000,   0,  15   ;; Fase 2: normal 3/8 = 22 px/s   grande 1/8 =  7 px/s
-   PhaseRow   5,  70,  40, %01010101,      20, %00010000,  10,  15   ;; Fase 3: normal 4/8 = 30 px/s   grande 1/8 =  7 px/s
-   PhaseRow   5,  55,  35, %01010101,      25, %00010001,  15,  15   ;; Fase 4: normal 4/8 = 30 px/s   grande 2/8 = 15 px/s
-   PhaseRow   6,  45,  35, %01101101,      30, %00010001,  20,  15   ;; Fase 5: normal 5/8 = 37 px/s   grande 2/8 = 15 px/s
+   ;;       max  min  var  normal         %grande  grande      %agresiva  %zigzag  %divisora
+   PhaseRow   3, 100,  60, %00010001,       0, %00010000,   0,   0,   0   ;; Fase 1: normal 2/8 = 15 px/s   (sin grandes ni agresivas)
+   PhaseRow   4,  80,  50, %00100101,      20, %00010000,   0,  15,   0   ;; Fase 2: normal 3/8 = 22 px/s   grande 1/8 =  7 px/s
+   PhaseRow   5,  70,  40, %01010101,      20, %00010000,  10,  15,   8   ;; Fase 3: normal 4/8 = 30 px/s   grande 1/8 =  7 px/s
+   PhaseRow   5,  55,  35, %01010101,      25, %00010001,  15,  15,  10   ;; Fase 4: normal 4/8 = 30 px/s   grande 2/8 = 15 px/s
+   PhaseRow   6,  45,  35, %01101101,      30, %00010001,  20,  15,  12   ;; Fase 5: normal 5/8 = 37 px/s   grande 2/8 = 15 px/s
 ASSERT (@ - PhaseTable) == PHASE_ROW_SIZE * PHASE_COUNT
 
 ;;-----------------------------------------------------------------
@@ -104,7 +109,8 @@ Enemies_SetPhase::
    ld   d, 0
    add  a
    add  a
-   add  a                       ;; 8n = n * PHASE_ROW_SIZE (la fase maxima es 4: cabe en 8 bits)
+   add  a                       ;; 8n
+   add  e                       ;; 9n = n * PHASE_ROW_SIZE (la fase maxima es 4: cabe en 8 bits)
    ld   e, a
    ld   hl, PhaseTable
    add  hl, de
@@ -122,8 +128,12 @@ Enemies_SetPhase::
    ld   [wMoveShiftBig], a
    ld   a, [hl+]
    ld   [wAggrPercent], a
-   ld   a, [hl]
+   ld   a, [hl+]
    ld   [wZigPercent], a
+   ld   a, [hl]
+   ld   [wDivPercent], a
+   ld   a, SPLIT_PATTERN
+   ld   [wMoveShiftSplit], a
    ret
 
 ;;-----------------------------------------------------------------
@@ -249,7 +259,7 @@ Random_PlayY:
 Enemies_ChooseType:
    ld   a, [wWarnTimer]
    and  a
-   jr   nz, .normal             ;; Ya hay una celula grande/agresiva avisada: esta sale normal
+   jp   nz, .normal             ;; Ya hay una celula grande/agresiva avisada: esta sale normal
    ld   b, 100
    call Random_Range            ;; A = 0..99
    ld   [wSpawnRoll], a
@@ -292,8 +302,8 @@ Enemies_ChooseType:
    ld   b, a                    ;; B = tirada - %grande - %agresiva
    ld   a, [wZigPercent]
    cp   b
-   jr   z, .normal
-   jr   c, .normal
+   jr   z, .tryDiv
+   jr   c, .tryDiv              ;; %zigzag <= B: no es zigzag
    ld   b, ENEMY_ZIGZAG
    call Enemies_CountType
    cp   MAX_ZIG
@@ -301,6 +311,24 @@ Enemies_ChooseType:
    xor  a
    ld   [wSpawnOff], a
    ld   a, ENEMY_ZIGZAG
+   ret
+.tryDiv:                        ;; B = tirada - %grande - %agresiva (>= %zigzag)
+   ld   a, [wZigPercent]
+   ld   c, a
+   ld   a, b
+   sub  c
+   ld   b, a                    ;; B = tirada - %grande - %agresiva - %zigzag
+   ld   a, [wDivPercent]
+   cp   b
+   jr   z, .normal
+   jr   c, .normal
+   ld   b, ENEMY_DIV
+   call Enemies_CountType
+   cp   MAX_DIV
+   jr   nc, .normal
+   ld   a, DIV_OFFSET
+   ld   [wSpawnOff], a
+   ld   a, ENEMY_DIV
    ret
 .normal:
    xor  a
@@ -385,6 +413,10 @@ Enemies_Spawn:
    ld   a, [wSpawnType]
    cp   ENEMY_AGGR
    ld   a, ENEMY_AGGR_HP
+   jr   z, .storeHp
+   ld   a, [wSpawnType]
+   cp   ENEMY_DIV
+   ld   a, ENEMY_DIV_HP
    jr   z, .storeHp
    ld   a, ENEMY_NORMAL_HP
 .storeHp:
@@ -479,6 +511,12 @@ Enemies_Move:
 .keepAcc:
    ld   [wAggrAcc], a
 .noAggr:
+   ld   a, [wMoveShiftSplit]
+   rlca
+   ld   [wMoveShiftSplit], a
+   jr   nc, .noSplit
+   set  3, c                    ;; Bit 3: las hijas se mueven en este fotograma
+.noSplit:
    ld   a, c
    ld   [wMoveNow], a
    and  a
@@ -492,6 +530,10 @@ Enemies_Move:
    jp   z, .next                ;; Hueco libre
    cp   ENEMY_AGGR
    jr   z, .isAggr
+   cp   ENEMY_DIV
+   jr   z, .isAggr              ;; La divisora va al ritmo de la agresiva, pero en linea recta
+   cp   ENEMY_SPLIT
+   jr   z, .isSplit
    cp   ENEMY_BIG
    ld   a, [wMoveNow]           ;; (ld no toca los flags: sigue valiendo la comparacion)
    jr   z, .isBig
@@ -501,6 +543,11 @@ Enemies_Move:
 .isAggr:
    ld   a, [wMoveNow]
    and  %00000100
+   jp   z, .next
+   jr   .move
+.isSplit:
+   ld   a, [wMoveNow]
+   and  %00001000
    jp   z, .next
    jr   .move
 .isBig:
@@ -793,7 +840,7 @@ Enemies_CheckBullets:
    inc  de                      ;; DE -> X de la bala
    call Collide_Box
    dec  de                      ;; (dec de no toca los flags)
-   jr   nc, .nextBullet         ;; No chocan
+   jp   nc, .nextBullet         ;; No chocan
    ;; --- La bala ha tocado a la celula ---
    ld   a, [de]
    and  MISSILE_FLAG
@@ -806,6 +853,17 @@ Enemies_CheckBullets:
    ENDR
    ld   a, [hl]
    ld   [wHitSize], a           ;; Tamaño antes del impacto
+   REPT ENEMY_SIZE - 1
+      dec  hl
+   ENDR
+   ld   a, [hl]                 ;; Tipo
+   REPT ENEMY_SIZE - 1
+      inc  hl                   ;; (de vuelta a la vida; inc no toca A)
+   ENDR
+   cp   ENEMY_DIV
+   jr   nz, .notDiv
+   ld   [hl], 1                 ;; La divisora no se encoge: cualquier impacto la destruye (y se parte en dos)
+.notDiv:
    ld   a, [wHitMissile]
    and  a
    jr   z, .normalHit
@@ -833,6 +891,14 @@ Enemies_CheckBullets:
    cp   ENEMY_ZIGZAG
    ld   a, ENEMY_ZIG_POINTS
    jr   z, .points
+   ld   a, [hl]
+   cp   ENEMY_DIV
+   ld   a, ENEMY_DIV_POINTS
+   jr   z, .points
+   ld   a, [hl]
+   cp   ENEMY_SPLIT
+   ld   a, ENEMY_SPLIT_POINTS
+   jr   z, .points
    ld   a, ENEMY_NORMAL_POINTS
 .points:
    push af
@@ -855,8 +921,15 @@ Enemies_CheckBullets:
    call Drop_Roll               ;; Con probabilidad DROP_PERCENT suelta una gota de energia
    pop  hl
    pop  bc
+   ld   a, [hl]
+   cp   ENEMY_DIV
+   jr   z, .split
    xor  a
    ld   [hl], a                 ;; Tipo 0: el hueco queda libre
+   jr   .freed
+.split:
+   call Enemies_Split           ;; La divisora se parte en dos hijas (su hueco lo ocupa la primera)
+.freed:
    pop  af
    call Combo_Kill              ;; Cuenta la baja en el combo y suma los puntos con el multiplicador (conserva BC, DE y HL)
    jr   .enemyDone              ;; Ya no hay que comprobar mas balas contra esta celula
@@ -896,6 +969,76 @@ Enemies_CheckBullets:
    ENDR
    dec  b
    jp   nz, .enemyLoop
+   ret
+
+;;-----------------------------------------------------------------
+;; Enemies_Split: La divisora destruida se parte en dos celulas hijas (tipo ENEMY_SPLIT, 1x1, mas rapidas) que salen de su centro
+;;    en direcciones opuestas y perpendiculares a la suya: si iba en vertical, a izquierda y derecha; si iba en horizontal, arriba y
+;;    abajo. Ocupan los huecos libres (el del padre se libera aqui); si no hay hueco para una, esa no sale.
+;;    Entrada: HL = inicio de la divisora     Conserva HL, BC y DE. Destruye: A
+Enemies_Split:
+   push hl
+   push bc
+   push de
+   inc  hl
+   ld   a, [hl+]                ;; Direccion (con el contador de onda en los bits altos, que aqui no importan)
+   and  %00000111
+   ld   [wSplitDir], a
+   ld   a, [hl+]
+   add  TILE_SIZE / 2
+   ld   [wSplitX], a            ;; Centro de la divisora: esquina + 4
+   ld   a, [hl]
+   add  TILE_SIZE / 2
+   ld   [wSplitY], a
+   dec  hl
+   dec  hl
+   dec  hl                      ;; HL -> inicio del padre
+   xor  a
+   ld   [hl], a                 ;; Su hueco queda libre para una hija
+   ld   a, [wSplitDir]
+   cp   DIR_LEFT
+   ld   a, DIR_LEFT             ;; (ld no toca los flags)
+   ld   b, DIR_RIGHT
+   jr   c, .go                  ;; Iba en vertical: las hijas van a los lados
+   ld   a, DIR_UP
+   ld   b, DIR_DOWN             ;; Iba en horizontal: salen hacia arriba y hacia abajo
+.go:
+   push bc
+   call .newChild
+   pop  bc
+   ld   a, b
+   call .newChild
+   pop  de
+   pop  bc
+   pop  hl
+   ret
+;;    A = direccion de la hija
+.newChild:
+   ld   hl, wEnemies
+   ld   b, MAX_ENEMIES
+.find:
+   ld   c, [hl]
+   inc  c
+   dec  c
+   jr   z, .put                 ;; Tipo 0: hueco libre
+   REPT ENEMY_SIZE
+      inc  hl
+   ENDR
+   dec  b
+   jr   nz, .find
+   ret                          ;; Sin hueco: esta hija no sale
+.put:
+   ld   c, a                    ;; C = direccion
+   ld   a, ENEMY_SPLIT
+   ld   [hl+], a
+   ld   a, c
+   ld   [hl+], a
+   ld   a, [wSplitX]
+   ld   [hl+], a
+   ld   a, [wSplitY]
+   ld   [hl+], a
+   ld   a, 1
+   ld   [hl], a                 ;; Vida 1 = 1x1
    ret
 
 ;;-----------------------------------------------------------------
@@ -957,6 +1100,14 @@ Enemies_ShieldHit:
    ld   a, [hl]
    cp   ENEMY_ZIGZAG
    ld   a, ENEMY_ZIG_POINTS
+   jr   z, .points
+   ld   a, [hl]
+   cp   ENEMY_DIV
+   ld   a, ENEMY_DIV_POINTS
+   jr   z, .points
+   ld   a, [hl]
+   cp   ENEMY_SPLIT
+   ld   a, ENEMY_SPLIT_POINTS
    jr   z, .points
    ld   a, ENEMY_NORMAL_POINTS
 .points:
@@ -1087,6 +1238,14 @@ Enemy_DrawSprites:
    ld   a, [wDrawType]
    cp   ENEMY_ZIGZAG
    ld   a, TILE_ZIGZAG
+   jr   z, .tile
+   ld   a, [wDrawType]
+   cp   ENEMY_DIV
+   ld   a, TILE_DIV
+   jr   z, .tile
+   ld   a, [wDrawType]
+   cp   ENEMY_SPLIT
+   ld   a, TILE_SPLIT
    jr   z, .tile
    ld   a, [wDrawN]
    cp   2

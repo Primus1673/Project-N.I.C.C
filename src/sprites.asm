@@ -147,6 +147,11 @@ Sprites_LoadTiles::
    ld   bc, ZigTiles.end - ZigTiles
    call MemCopy
 
+   ld   de, DivTiles
+   ld   hl, _VRAM + TILE_DIV * TILE_BYTES
+   ld   bc, DivTiles.end - DivTiles
+   call MemCopy
+
    ld   de, ShieldTiles
    ld   hl, _VRAM + TILE_SHIELD * TILE_BYTES
    ld   bc, ShieldTiles.end - ShieldTiles
@@ -206,3 +211,6 @@ ShieldTiles.end:
 
 INCLUDE "sprites/celula_zigzag.z80"
 ZigTiles.end:
+
+INCLUDE "sprites/celula_divisora.z80"
+DivTiles.end:

@@ -155,11 +155,18 @@ ASSERT AGGR_SPEED_PCT > 0 && AGGR_SPEED_PCT < 100
 DEF MAX_AGGR       EQU 2   ;; Celulas agresivas a la vez
 DEF ENEMY_ZIGZAG   EQU 4   ;; Celula zigzag (tipo 4): 1x1, 1 disparo; avanza ondulando de lado a lado
 DEF ZIG_STEP_PX    EQU 2   ;; Pixeles que se desplaza de lado la zigzag por cada paso (1 = onda suave de 8 px, 2 = onda de 16 px)
+DEF ENEMY_DIV      EQU 5   ;; Celula divisora (tipo 5): 2x2, 1 disparo; al destruirla se parte en 2 hijas
+DEF ENEMY_DIV_HP        EQU 2
+DEF DIV_OFFSET     EQU (ENEMY_DIV_HP - 1) * TILE_SIZE   ;; Zona de aparicion estrechada: 8 pixeles
+DEF MAX_DIV        EQU 1   ;; Celulas divisoras a la vez
+DEF ENEMY_SPLIT    EQU 6   ;; Celula hija (tipo 6): 1x1, 1 disparo, rapida; solo nace al partirse una divisora
+DEF SPLIT_PATTERN  EQU %01110111   ;; Patron de movimiento de las hijas: 6/8 = 45 px/s (mas rapidas que cualquier celula normal)
 DEF MAX_ZIG        EQU 3   ;; Celulas zigzag a la vez
 DEF AGGR_OFFSET    EQU (ENEMY_AGGR_HP - 1) * TILE_SIZE   ;; Zona de aparicion estrechada: 8 pixeles
 
 ;;    Limite de sprites: la OAM admite 40. Nave (1) + balas (MAX_BULLETS) + enemigos. Una celula grande a 3x3 gasta 9 sprites.
-ASSERT MAX_BIG * 9 + MAX_AGGR * 4 + (MAX_ENEMIES - MAX_BIG - MAX_AGGR) <= MAX_SPRITES - SPR_SLOT_ENEMIES
+DEF PHASE_MAX_ENEMIES EQU 6   ;; Maximo de celulas de la tabla de fases (las hijas pueden sumar alguna mas: Put_Sprite se niega si la OAM esta llena)
+ASSERT MAX_BIG * 9 + (MAX_AGGR + MAX_DIV) * 4 + (PHASE_MAX_ENEMIES - MAX_BIG - MAX_AGGR - MAX_DIV) <= MAX_SPRITES - SPR_SLOT_ENEMIES
 
 DEF WARN_FRAMES    EQU 48   ;; Aviso antes de que entre una celula grande o agresiva: una flecha parpadea en el marco (0,8 s)
 DEF WARN_BLINK_BIT EQU 2    ;; La flecha se ve cuando este bit del contador esta a 1: parpadea cada 4 fotogramas
@@ -177,6 +184,8 @@ DEF HEART_PERCENT   EQU 4    ;; Probabilidad (0-100) de que suelte un corazon (s
 DEF DROP_ENERGY     EQU 1    ;; Tipo de gota: energia
 DEF DROP_HEART      EQU 2    ;; ... corazon: da 1 vida
 DEF TILE_HEART_DROP EQU 167  ;; Corazon que cae: 1 tile de src/sprites/corazon.z80 (a continuacion de los 36 del virus)
+DEF TILE_DIV        EQU 173  ;; Celula divisora a 2x2: 4 tiles (por filas) de src/sprites/celula_divisora.z80
+DEF TILE_SPLIT      EQU 177  ;; Celula hija: 5o tile del mismo archivo
 DEF TILE_ZIGZAG     EQU 172  ;; Celula zigzag: 1 tile de src/sprites/celula_zigzag.z80
 DEF TILE_SHIELD     EQU 168  ;; Escudo: anillo de 16x16 en 4 tiles (arriba-izq, arriba-der, abajo-izq, abajo-der) de src/sprites/escudo.z80
 DEF MAX_DROPS       EQU 3    ;; Gotas a la vez (1 sprite cada una)
@@ -238,6 +247,8 @@ DEF SCORE_DIGITS   EQU 5     ;; Puntuacion de 5 cifras decimales (maximo 99999, 
 DEF ENEMY_NORMAL_POINTS EQU 1 ;; Puntos de la celula tipo 1, EN DECENAS (1 = 10 puntos)
 DEF ENEMY_BIG_POINTS    EQU 5 ;; Puntos de la celula grande, en decenas (50 puntos)
 DEF ENEMY_ZIG_POINTS    EQU 2 ;; Celula zigzag, en decenas (20 puntos)
+DEF ENEMY_DIV_POINTS    EQU 4 ;; Celula divisora, en decenas (40 puntos)
+DEF ENEMY_SPLIT_POINTS  EQU 2 ;; Celula hija, en decenas (20 puntos)
 DEF ENEMY_AGGR_POINTS   EQU 3 ;; Puntos de la celula agresiva, en decenas (30 puntos)
 
 ;;--------------------------------------
