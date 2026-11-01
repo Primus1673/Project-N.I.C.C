@@ -161,7 +161,7 @@ DEF DIV_OFFSET     EQU (ENEMY_DIV_HP - 1) * TILE_SIZE   ;; Zona de aparicion est
 DEF MAX_DIV        EQU 1   ;; Celulas divisoras a la vez
 DEF ENEMY_SPLIT    EQU 6   ;; Celula hija (tipo 6): 1x1, 1 disparo, rapida; solo nace al partirse una divisora
 DEF SPLIT_PATTERN  EQU %01110111   ;; Patron de movimiento de las hijas: 6/8 = 45 px/s (mas rapidas que cualquier celula normal)
-DEF MAX_ZIG        EQU 3   ;; Celulas zigzag a la vez
+DEF MAX_ZIG        EQU 4   ;; Celulas zigzag a la vez
 DEF AGGR_OFFSET    EQU (ENEMY_AGGR_HP - 1) * TILE_SIZE   ;; Zona de aparicion estrechada: 8 pixeles
 
 ;;    Limite de sprites: la OAM admite 40. Nave (1) + balas (MAX_BULLETS) + enemigos. Una celula grande a 3x3 gasta 9 sprites.
@@ -245,7 +245,7 @@ DEF STATE_NAME     EQU 9     ;; Eleccion del nombre (3 letras) tras entrar en la
 DEF STATE_RESULTS  EQU 5     ;; Pantalla de puntuacion final (tras la ultima fase o tras perder). START reinicia
 DEF SCORE_DIGITS   EQU 5     ;; Puntuacion de 5 cifras decimales (maximo 99999, se satura)
 DEF ENEMY_NORMAL_POINTS EQU 1 ;; Puntos de la celula tipo 1, EN DECENAS (1 = 10 puntos)
-DEF ENEMY_BIG_POINTS    EQU 5 ;; Puntos de la celula grande, en decenas (50 puntos)
+DEF ENEMY_BIG_POINTS    EQU 10 ;; Puntos de la celula grande, en decenas (100 puntos)
 DEF ENEMY_ZIG_POINTS    EQU 2 ;; Celula zigzag, en decenas (20 puntos)
 DEF ENEMY_DIV_POINTS    EQU 4 ;; Celula divisora, en decenas (40 puntos)
 DEF ENEMY_SPLIT_POINTS  EQU 2 ;; Celula hija, en decenas (20 puntos)

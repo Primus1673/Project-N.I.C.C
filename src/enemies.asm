@@ -93,11 +93,12 @@ ENDM
 DEF PHASE_ROW_SIZE EQU 9
 PhaseTable:
    ;;       max  min  var  normal         %grande  grande      %agresiva  %zigzag  %divisora
-   PhaseRow   3, 100,  60, %00010001,       0, %00010000,   0,   0,   0   ;; Fase 1: normal 2/8 = 15 px/s   (sin grandes ni agresivas)
-   PhaseRow   4,  80,  50, %00100101,      20, %00010000,   0,  15,   0   ;; Fase 2: normal 3/8 = 22 px/s   grande 1/8 =  7 px/s
-   PhaseRow   5,  70,  40, %01010101,      20, %00010000,  10,  15,   8   ;; Fase 3: normal 4/8 = 30 px/s   grande 1/8 =  7 px/s
-   PhaseRow   5,  55,  35, %01010101,      25, %00010001,  15,  15,  10   ;; Fase 4: normal 4/8 = 30 px/s   grande 2/8 = 15 px/s
-   PhaseRow   6,  45,  35, %01101101,      30, %00010001,  20,  15,  12   ;; Fase 5: normal 5/8 = 37 px/s   grande 2/8 = 15 px/s
+   ;;    Cada fase tiene un enemigo protagonista (el resto del reparto, hasta 100 %, son celulas normales):
+   PhaseRow   3, 100,  60, %00010001,       0, %00010000,   0,   0,   0   ;; Fase 1 CONTAGIO:  solo normales 2/8 = 15 px/s
+   PhaseRow   4,  80,  50, %00100101,       0, %00010000,   0,  40,   0   ;; Fase 2 ONDAS:     zigzag; normal 3/8 = 22 px/s
+   PhaseRow   5,  70,  40, %01010101,      35, %00010000,   0,   0,  10   ;; Fase 3 GIGANTES:  grandes (1/8 = 7 px/s) y alguna divisora
+   PhaseRow   5,  45,  30, %01010101,       0, %00010000,  35,   0,   0   ;; Fase 4 CAZADORAS: agresivas; normales a 4/8 = 30 px/s y apariciones mas seguidas
+   PhaseRow   6,  45,  35, %01101101,      15, %00010001,  12,  12,  15   ;; Fase 5 PANDEMIA:  de todo, con divisoras; normal 5/8 = 37 px/s
 ASSERT (@ - PhaseTable) == PHASE_ROW_SIZE * PHASE_COUNT
 
 ;;-----------------------------------------------------------------
@@ -550,8 +551,22 @@ Enemies_Move:
    and  %00001000
    jp   z, .next
    jr   .move
-.isBig:
-   and  %00000001
+.isBig:                        ;; A = wMoveNow. La grande se enfurece al encogerse: cada impacto la hace mas rapida
+   ld   d, a                    ;; D = wMoveNow
+   REPT ENEMY_SIZE - 1
+      inc  hl
+   ENDR
+   ld   a, [hl]                 ;; Tamaño actual (3, 2 o 1)
+   REPT ENEMY_SIZE - 1
+      dec  hl
+   ENDR
+   ld   e, %00000001            ;; 3x3: el patron lento de la fase (bit 0)
+   cp   3
+   jr   nc, .bigMask
+   ld   e, %00000010            ;; 2x2 y 1x1: al ritmo de una celula normal de la fase (bit 1)
+.bigMask:
+   ld   a, d
+   and  e
    jp   z, .next
 .move:
    ld   a, [hl]
