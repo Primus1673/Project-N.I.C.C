@@ -348,3 +348,40 @@ DEF NAME_ROW_POINTS EQU 8    ;; ... de los puntos
 DEF NAME_ROW       EQU 11    ;; Fila de "NOMBRE" y las 3 letras (columnas NAME_COL, +2, +4)
 DEF NAME_COL       EQU 11
 DEF NAME_BLINK     EQU 20    ;; Fotogramas que la letra elegida esta visible / oculta
+
+;;-----------------------------------------------------------------
+;;-- El jefe final (boss.asm)
+DEF BOSS_PHASE        EQU PHASE_COUNT + 1   ;; Numero de la fase del jefe (sin cronometro: acaba cuando muere)
+DEF BOSS_TILES        EQU 4                 ;; Mide 4x4 tiles
+DEF BOSS_PIX          EQU BOSS_TILES * TILE_SIZE   ;; 32 pixeles de lado
+DEF TILE_BOSS         EQU 178               ;; 16 tiles (por filas) de src/sprites/jefe.z80
+DEF BOSS_HP           EQU 30                ;; Vida: 30 impactos de bala (un misil quita MISSILE_DAMAGE)
+DEF BOSS_YBIAS        EQU 32                ;; wBossYb = Y + este sesgo (para salir desde arriba con numeros sin signo)
+DEF BOSS_YB_START     EQU PLAY_MIN_Y - BOSS_PIX + BOSS_YBIAS   ;; Oculto justo encima del marco superior
+DEF BOSS_Y_FIGHT      EQU PLAY_MIN_Y + 8    ;; Y donde se queda a pelear (debajo del HUD)
+DEF BOSS_YB_FIGHT     EQU BOSS_Y_FIGHT + BOSS_YBIAS
+DEF BOSS_MIN_X        EQU PLAY_MIN_X
+DEF BOSS_MAX_X        EQU PLAY_MAX_X + TILE_SIZE - BOSS_PIX   ;; Su borde derecho llega al marco
+DEF BOSS_START_X      EQU (SCREEN_W - BOSS_PIX) / 2
+DEF BOSS_MOVE_FRAMES  EQU 3                 ;; Se mueve 1 pixel cada 3 fotogramas (20 px/s)
+DEF BOSS_FLASH_FRAMES EQU 8                 ;; Parpadeo al recibir un impacto
+DEF BOSS_HIT_POINTS   EQU 1                 ;; Cada impacto cuenta como una baja de 10 puntos (con el multiplicador del combo)
+DEF BOSS_KILL_POINTS  EQU 50                ;; Destruirlo: 500 puntos (en decenas)
+DEF BOSS_DYING_FRAMES EQU 150               ;; Duracion de su muerte
+DEF BOSS_BURST_AT     EQU 36                ;; Cuenta atras en la que explota del todo
+DEF BOSS_STATE_NONE   EQU 0
+DEF BOSS_STATE_ENTER  EQU 1                 ;; Entrando (sin daño)
+DEF BOSS_STATE_FIGHT  EQU 2
+DEF BOSS_STATE_DYING  EQU 3
+DEF BOSS_STATE_DONE   EQU 4                 ;; Muerto del todo: Game_Update pasa a la victoria
+DEF BOSS_STAGE2_HP    EQU 20                ;; Con esta vida o menos, etapa 2 (suelta tambien agresivas y divisoras)
+DEF BOSS_STAGE3_HP    EQU 10                ;; Con esta vida o menos, etapa 3 (mas rapido y con rafagas)
+DEF BOSS_MOVE_FAST    EQU 2                 ;; Etapa 3: 1 pixel cada 2 fotogramas (30 px/s)
+DEF BOSS_CELLS_S1     EQU 3                 ;; Celulas a la vez que suelta en la etapa 1 (en las otras, BOSS_CELLS_MAX)
+DEF BOSS_CELLS_MAX    EQU 4
+DEF BOSS_FIRST_SPAWN  EQU 60                ;; Fotogramas desde que se coloca hasta que suelta la primera celula
+DEF BOSS_SPAWN_S1     EQU 150               ;; Fotogramas entre sueltas, por etapa (mas hasta BOSS_SPAWN_VAR al azar)
+DEF BOSS_SPAWN_S2     EQU 110
+DEF BOSS_SPAWN_S3     EQU 80
+DEF BOSS_SPAWN_VAR    EQU 30
+DEF BOSS_STAGE_PAUSE  EQU 90                ;; Al cambiar de etapa: las celulas explotan y no suelta ninguna durante este tiempo

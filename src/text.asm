@@ -32,6 +32,7 @@ SECTION "Text", ROM0
 ;;--------------------------------------
 ;;-- Cadenas (terminan en TEXT_END; el espacio es el tile 0, que no se dibuja)
 StrPhase:: db "FASE ", TEXT_END
+StrBoss::  db "FASE x", TEXT_END
 StrPaused:: db "PAUSA", TEXT_END
 StrWin::     db "VICTORIA", TEXT_END      ;; Pantalla de puntuacion (se dibujan en el fondo, ver results.asm)
 StrLose::    db "GAME OVER", TEXT_END

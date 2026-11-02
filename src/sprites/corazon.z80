@@ -3,7 +3,7 @@
 ; Tile Source File.
 ;
 ; Info:
-;   Section              : Tiles
+;   Section              : HeartTiles
 ;   Bank                 : 0
 ;   Form                 : All tiles as one unit.
 ;   Format               : Gameboy 4 color.
@@ -26,3 +26,5 @@
 HeartTiles::
 DB $66,$66,$D9,$BF,$81,$FF,$81,$FF
 DB $42,$7E,$24,$3C,$18,$18,$00,$00
+
+; End of CORAZON.Z80

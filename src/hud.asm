@@ -99,6 +99,40 @@ Hud_Update::
    ;;--------------------------------------
    ;;-- Cronometro de la fase: segundos que quedan, 2 cifras. Con TIME_BLINK_SEC o menos solo se ve la primera mitad de cada segundo.
    ld   hl, _SCRN0 + HUD_TIME_COL
+   ld   a, [wPhase]
+   cp   BOSS_PHASE
+   jr   nz, .clock
+   ;;-- Fase del jefe: su vida como barra de 2 tiles (16 pixeles, redondeando hacia arriba)
+   ld   a, [wBossHp]
+   add  a
+   add  a
+   add  a                       ;; 8 * vida (maximo 240)
+   add  14
+   ld   b, 0
+.hpDiv:
+   cp   15
+   jr   c, .hpDone
+   sub  15
+   inc  b
+   jr   .hpDiv
+.hpDone:                        ;; B = pixeles de barra (0 a 16)
+   ld   a, b
+   cp   TILE_SIZE
+   jr   c, .hpFirst
+   sub  TILE_SIZE
+   ld   b, a
+   ld   a, TILE_SIZE
+   jr   .hpPut
+.hpFirst:
+   ld   b, 0
+.hpPut:
+   add  TILE_BAR
+   ld   [hl+], a
+   ld   a, b
+   add  TILE_BAR
+   ld   [hl], a
+   jr   .timeDone
+.clock:
    ld   a, [wPhaseSec]
    cp   TIME_BLINK_SEC + 1
    jr   nc, .timeShow

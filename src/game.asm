@@ -62,6 +62,7 @@ Game_BeginPhase:
    call Enemies_Init
    call Explo_Init
    call Drops_Init
+   call Boss_Init
    ld   a, [wPhase]
    dec  a
    call Enemies_SetPhase
@@ -107,6 +108,8 @@ Break_Start:
    ld   b, a
    inc  a
    ld   [wPhase], a
+   cp   BOSS_PHASE
+   jr   z, .boss
    ld   a, b                 ;; Enemies_SetPhase: 0 = la primera fase, es decir, la fase anterior a la nueva
    call Enemies_SetPhase
    ld   a, LOW(PHASE_FRAMES)
@@ -114,6 +117,10 @@ Break_Start:
    ld   a, HIGH(PHASE_FRAMES)
    ld   [wPhaseTimerHi], a
    call Phase_ResetClock
+   jr   .common
+.boss:                       ;; Fase del jefe: sin cronometro ni apariciones de la tabla (boss.asm)
+   call Boss_Begin
+.common:
    call Enemies_Wipe
    ld   a, 1
    ld   [wComboHold], a      ;; El combo no corre mientras no haya celulas en la fase nueva
@@ -121,6 +128,11 @@ Break_Start:
    ld   [wHudDirty], a
    ld   a, BREAK_FRAMES
    ld   [wBreak], a
+   ld   a, [wPhase]
+   cp   BOSS_PHASE
+   ret  nz
+   xor  a
+   ld   [wComboHold], a      ;; Con el jefe el combo corre con normalidad
    ret
 
 ;;-----------------------------------------------------------------
@@ -221,6 +233,9 @@ Game_Update::
    and  a
    jr   nz, .breakTick
    call Enemies_Update       ;; Incluye los choques con el jugador (Game_PlayerHit)
+   ld   a, [wPhase]
+   cp   BOSS_PHASE
+   call z, Boss_Update       ;; El jefe (boss.asm)
    jr   .afterEnemies
 .breakTick:                  ;; Cambio de fase: no hay celulas ni salen nuevas; el jugador sigue jugando
    call Break_Tick
@@ -230,6 +245,9 @@ Game_Update::
    ld   a, [wGameState]
    cp   STATE_PLAYING
    ret  nz                   ;; Ha perdido la ultima vida en este fotograma
+   ld   a, [wBossState]
+   cp   BOSS_STATE_DONE
+   jp   z, .winFade          ;; El jefe ha muerto del todo: victoria
    ;; Cuenta atras y parpadeo del combo: congelados durante el mensaje de cambio de fase y hasta que la fase nueva tiene
    ;; su primera celula (o su aviso), para que la espera sin enemigos no rompa la cadena
    ld   a, [wBreak]
@@ -260,6 +278,9 @@ Game_Update::
    ld   a, [wBreak]
    and  a
    ret  nz
+   ld   a, [wPhase]
+   cp   BOSS_PHASE
+   ret  z                    ;; La fase del jefe no tiene cronometro ni limite de tiempo
    ;; Cronometro del HUD: un segundo cada 60 fotogramas; avisa al HUD al cambiar de segundo y, con poco tiempo, cada medio segundo
    ld   hl, wSecFrames
    dec  [hl]
@@ -296,10 +317,9 @@ Game_Update::
    or   l
    ret  nz
    ;; La fase ha terminado: empieza a oscurecerse la pantalla (todo queda congelado)
-   ld   a, [wPhase]
-   cp   PHASE_COUNT
-   jp   nz, Break_Start      ;; Cambio de fase sin cortes: parpadeo y mensaje sobre la partida
-   ld   a, END_WIN           ;; Era la ultima: despues del negro viene la pantalla de puntuacion
+   jp   Break_Start          ;; Cambio de fase sin cortes: parpadeo y mensaje sobre la partida (tras la ultima, sale el jefe)
+.winFade:                    ;; El jefe ha muerto: despues del negro viene la pantalla de victoria y la puntuacion
+   ld   a, END_WIN
    ld   [wEndKind], a
 .startFade:
    ld   a, STATE_FADE_OUT
@@ -433,7 +453,7 @@ FadePalettes:                ;; %DDCCBBAA (AA = color 0): cada escalon hace cada
 Game_Draw::
    ld   a, [wGameState]
    cp   STATE_INTRO
-   jr   z, .intro
+   jp   z, .intro
    cp   STATE_RESULTS
    jp   z, Sprites_Clear     ;; La puntuacion se dibuja en el fondo: ningun sprite
    cp   STATE_PAUSED
@@ -471,6 +491,9 @@ Game_Draw::
    call Shield_Draw
    ld   a, 1
    ld   [wTextDark], a
+   ld   a, [wPhase]
+   cp   BOSS_PHASE
+   jr   z, .bossMsg
    ld   hl, StrPhase
    ld   b, (SCREEN_W - 6 * TILE_SIZE) / 2
    ld   c, TEXT_CENTER_Y
@@ -478,6 +501,13 @@ Game_Draw::
    ld   a, [wPhase]
    add  TILE_FONT_DIGIT0
    call Text_DrawChar
+   jr   .breakEnd
+.bossMsg:                    ;; Fase del jefe: "JEFE" en vez de "FASE N"
+   ld   hl, StrBoss
+   ld   b, (SCREEN_W - 4 * TILE_SIZE) / 2
+   ld   c, TEXT_CENTER_Y
+   call Text_DrawString
+.breakEnd:
    xor  a
    ld   [wTextDark], a
    jp   Enemies_DrawAt       ;; (ya no hay celulas: dibuja las explosiones, gotas y oculta el resto)

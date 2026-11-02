@@ -457,6 +457,57 @@ Enemies_Spawn:
    ret
 
 ;;-----------------------------------------------------------------
+;; Enemies_PlaceDown: Crea una celula ya en juego (sin aviso) que baja desde la posicion dada: la usa el jefe (boss.asm)
+;;    Entrada: A = tipo (normal, zigzag, agresiva o divisora), B = X, C = Y     Si no hay hueco libre, no hace nada
+;;    Destruye: A, D, E, HL
+Enemies_PlaceDown::
+   ld   d, a                    ;; D = tipo
+   ld   hl, wEnemies
+   ld   e, MAX_ENEMIES
+.find:
+   ld   a, [hl]
+   and  a
+   jr   z, .free
+   REPT ENEMY_SIZE
+      inc  hl
+   ENDR
+   dec  e
+   jr   nz, .find
+   ret
+.free:
+   ld   a, d
+   ld   [hl+], a                ;; Tipo
+   ld   a, d
+   cp   ENEMY_ZIGZAG
+   jr   nz, .dir
+   push hl                      ;; La zigzag empieza con la onda en un punto al azar
+   call Random_Next
+   pop  hl
+   and  %11111000
+   or   DIR_DOWN
+   jr   .storeDir
+.dir:
+   ld   a, DIR_DOWN
+.storeDir:
+   ld   [hl+], a                ;; Direccion
+   ld   a, b
+   ld   [hl+], a                ;; X
+   ld   a, c
+   ld   [hl+], a                ;; Y
+   ld   a, d
+   cp   ENEMY_AGGR
+   ld   a, ENEMY_AGGR_HP        ;; (ld no toca los flags)
+   jr   z, .hp
+   ld   a, d
+   cp   ENEMY_DIV
+   ld   a, ENEMY_DIV_HP
+   jr   z, .hp
+   ld   a, 1                    ;; Normal y zigzag: 1x1
+.hp:
+   ld   [hl], a                 ;; Vida (= tamaño en tiles)
+   ret
+
+;;-----------------------------------------------------------------
 ;; Enemies_Activate: Acaba el aviso: la celula guardada en wWarnType entra de verdad en un hueco libre (si no hay, se pierde)
 ;;    Destruye: A, BC, DE, HL
 Enemies_Activate:
@@ -1174,6 +1225,9 @@ Enemies_Update::
 .noWarn:
    ;;--------------------------------------
    ;;-- Aparicion: cuando el temporizador llega a 0 sale una celula y se programa la siguiente
+   ld   a, [wPhase]
+   cp   BOSS_PHASE
+   jr   z, .noSpawn             ;; En la fase del jefe no salen celulas por su cuenta
    ld   a, [wSpawnTimer]
    dec  a
    ld   [wSpawnTimer], a
@@ -1319,6 +1373,7 @@ Enemies_Draw::
 ;;    Entrada: DE = primer sprite libre
 Enemies_DrawAt::
    ASSERT ENEMY_SIZE == 5       ;; Esta rutina asume la estructura [tipo, direccion, X, Y, vida]
+   call Boss_Draw               ;; El jefe primero (si lo hay): son 16 sprites que no pueden quedarse sin sitio
    ld   hl, wEnemies
    ld   b, MAX_ENEMIES
 .enemy:
