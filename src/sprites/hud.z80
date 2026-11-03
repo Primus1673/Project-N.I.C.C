@@ -44,9 +44,9 @@ DB $C7,$C7,$BB,$BB,$BB,$BB,$C7,$C7
 DB $BB,$BB,$BB,$BB,$C7,$C7,$FF,$FF
 DB $C7,$C7,$BB,$BB,$BB,$BB,$C3,$C3
 DB $FB,$FB,$F7,$F7,$CF,$CF,$FF,$FF
-DB $FF,$FF,$93,$93,$01,$01,$01,$01
-DB $83,$83,$C7,$C7,$EF,$EF,$FF,$FF
-DB $FF,$FF,$FF,$93,$FF,$6D,$FF,$7D
-DB $FF,$BB,$FF,$D7,$FF,$EF,$FF,$FF
+DB $E7,$E7,$81,$81,$81,$81,$81,$81
+DB $81,$81,$81,$81,$81,$81,$FF,$FF
+DB $E7,$E7,$81,$81,$BD,$BD,$BD,$BD
+DB $BD,$BD,$BD,$BD,$81,$81,$FF,$FF
 DB $BB,$BB,$BB,$BB,$D7,$D7,$EF,$EF
 DB $D7,$D7,$BB,$BB,$BB,$BB,$FF,$FF

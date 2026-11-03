@@ -602,22 +602,8 @@ Enemies_Move:
    and  %00001000
    jp   z, .next
    jr   .move
-.isBig:                        ;; A = wMoveNow. La grande se enfurece al encogerse: cada impacto la hace mas rapida
-   ld   d, a                    ;; D = wMoveNow
-   REPT ENEMY_SIZE - 1
-      inc  hl
-   ENDR
-   ld   a, [hl]                 ;; Tamaño actual (3, 2 o 1)
-   REPT ENEMY_SIZE - 1
-      dec  hl
-   ENDR
-   ld   e, %00000001            ;; 3x3: el patron lento de la fase (bit 0)
-   cp   3
-   jr   nc, .bigMask
-   ld   e, %00000010            ;; 2x2 y 1x1: al ritmo de una celula normal de la fase (bit 1)
-.bigMask:
-   ld   a, d
-   and  e
+.isBig:
+   and  %00000001
    jp   z, .next
 .move:
    ld   a, [hl]

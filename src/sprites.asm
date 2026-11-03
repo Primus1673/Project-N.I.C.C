@@ -57,7 +57,7 @@ Sprites_Clear::
 ;;    - src/sprites/borde.z80 -> a partir del tile TILE_BORDER (marco de la pantalla)
 ;;    - src/sprites/bala.z80  -> a partir del tile TILE_BULLET (balas)
 ;;    - src/sprites/celula.z80 -> a partir del tile TILE_ENEMY1 (celula infectada)
-;;    - src/sprites/hud.z80   -> a partir del tile TILE_HUD (digitos 0-9, corazon lleno, corazon vacio y X del combo)
+;;    - src/sprites/hud.z80   -> a partir del tile TILE_HUD (digitos 0-9, bateria llena, bateria vacia y X del combo)
 ;;    - src/sprites/font.z80  -> a partir del tile TILE_FONT (fuente para texto con sprites: digitos 0-9 y letras A-Z)
 ;;    - src/sprites/celula_grande.z80 -> a partir del tile TILE_BIG3 (celula grande: 9 tiles a 3x3 y 4 tiles a 2x2)
 ;;    - src/sprites/celula_agresiva.z80 -> a partir del tile TILE_AGGR2 (celula agresiva: 4 tiles a 2x2 y 1 tile a 1x1)
@@ -66,7 +66,7 @@ Sprites_Clear::
 ;;    - src/sprites/aviso.z80 -> a partir del tile TILE_WARN (4 flechas del aviso de entrada de las celulas)
 ;;    - src/sprites/energia.z80 -> a partir del tile TILE_MISSILE_V (misiles, gota y barra de energia: 12 tiles)
 ;;    - src/sprites/virus.z80 -> a partir del tile TILE_VIRUS (virus grande del fondo del titulo: 36 tiles a 6x6)
-;;    - src/sprites/corazon.z80 -> a partir del tile TILE_HEART_DROP (corazon que sueltan las celulas: 1 tile)
+;;    - src/sprites/bateria.z80 -> a partir del tile TILE_HEART_DROP (bateria que sueltan las celulas y da 1 vida: 1 tile)
 ;;    - src/sprites/escudo.z80 -> a partir del tile TILE_SHIELD (anillo del escudo: 4 tiles a 2x2)
 ;;    El tile 0 (TILE_BLANK) no se copia: ya esta vacio porque main.asm borra la VRAM al arrancar.
 ;;    IMPORTANTE: solo llamar con la LCD apagada o durante el VBlank
@@ -137,9 +137,9 @@ Sprites_LoadTiles::
    ld   bc, VirusTiles.end - VirusTiles
    call MemCopy
 
-   ld   de, HeartTiles
+   ld   de, BatteryTiles
    ld   hl, _VRAM + TILE_HEART_DROP * TILE_BYTES
-   ld   bc, HeartTiles.end - HeartTiles
+   ld   bc, BatteryTiles.end - BatteryTiles
    call MemCopy
 
    ld   de, ZigTiles
@@ -208,8 +208,8 @@ EnergyTiles.end:
 INCLUDE "sprites/virus.z80"
 VirusTiles.end:
 
-INCLUDE "sprites/corazon.z80"
-HeartTiles.end:
+INCLUDE "sprites/bateria.z80"
+BatteryTiles.end:
 
 INCLUDE "sprites/escudo.z80"
 ShieldTiles.end:
