@@ -55,10 +55,10 @@ DEF TILE_PLAYER    EQU 1   ;; Nave del jugador: primer tile de src/sprites/dron.
 DEF TILE_BORDER    EQU 2   ;; Borde del marco: primer tile de src/sprites/borde.z80
 DEF TILE_BULLET    EQU 3   ;; Bala: primer tile de src/sprites/bala.z80
 DEF TILE_ENEMY1    EQU 4   ;; Celula infectada (tipo 1): primer tile de src/sprites/celula.z80
-DEF TILE_HUD       EQU 5   ;; Tiles del HUD: primer tile de src/sprites/hud.z80 (13 tiles: digitos 0-9, corazon lleno, corazon vacio y X)
+DEF TILE_HUD       EQU 5   ;; Tiles del HUD: primer tile de src/sprites/hud.z80 (13 tiles: digitos 0-9, bateria llena, bateria vacia y X)
 DEF TILE_DIGIT0    EQU TILE_HUD          ;; Tile del digito 0 (el digito N es TILE_DIGIT0 + N)
-DEF TILE_HEART_FULL  EQU TILE_HUD + 10   ;; Corazon lleno (vida que se conserva)
-DEF TILE_HEART_EMPTY EQU TILE_HUD + 11   ;; Corazon vacio (vida perdida)
+DEF TILE_HEART_FULL  EQU TILE_HUD + 10   ;; Bateria llena (vida que se conserva)
+DEF TILE_HEART_EMPTY EQU TILE_HUD + 11   ;; Bateria vacia (vida perdida)
 DEF TILE_HUD_X     EQU TILE_HUD + 12     ;; Letra X del multiplicador de combo ("X3")
 DEF TILE_FONT      EQU 18  ;; Fuente de texto para SPRITES: primer tile de src/sprites/font.z80 (36 tiles, hasta el 53)
 DEF TILE_BIG3      EQU 54  ;; Celula grande a 3x3: 9 tiles seguidos (por filas) de src/sprites/celula_grande.z80
@@ -180,10 +180,10 @@ DEF ENERGY_MAX      EQU 40   ;; Barra llena: 5 tiles de 8 pixeles
 DEF ENERGY_PER_DROP EQU 5    ;; Cada gota: 1/8 de la barra
 DEF ENERGY_DRAIN_FRAMES EQU 12   ;; Con el escudo activo, la barra baja 1 pixel cada 12 fotogramas: 40 * 12 = 480 = 8 s
 DEF DROP_PERCENT    EQU 25   ;; Probabilidad (0-100) de que una celula suelte una gota de energia al morir
-DEF HEART_PERCENT   EQU 4    ;; Probabilidad (0-100) de que suelte un corazon (solo si falta alguna vida)
+DEF HEART_PERCENT   EQU 4    ;; Probabilidad (0-100) de que suelte una bateria de vida (solo si falta alguna vida)
 DEF DROP_ENERGY     EQU 1    ;; Tipo de gota: energia
-DEF DROP_HEART      EQU 2    ;; ... corazon: da 1 vida
-DEF TILE_HEART_DROP EQU 167  ;; Corazon que cae: 1 tile de src/sprites/corazon.z80 (a continuacion de los 36 del virus)
+DEF DROP_HEART      EQU 2    ;; ... bateria de vida: da 1 vida
+DEF TILE_HEART_DROP EQU 167  ;; Bateria que cae: 1 tile de src/sprites/bateria.z80 (a continuacion de los 36 del virus)
 DEF TILE_DIV        EQU 173  ;; Celula divisora a 2x2: 4 tiles (por filas) de src/sprites/celula_divisora.z80
 DEF TILE_SPLIT      EQU 177  ;; Celula hija: 5o tile del mismo archivo
 DEF TILE_ZIGZAG     EQU 172  ;; Celula zigzag: 1 tile de src/sprites/celula_zigzag.z80
@@ -253,7 +253,7 @@ DEF ENEMY_AGGR_POINTS   EQU 3 ;; Puntos de la celula agresiva, en decenas (30 pu
 
 ;;--------------------------------------
 ;;-- HUD: ocupa la fila superior del marco (fila 0 del mapa de fondo)
-DEF HUD_HEARTS_COL EQU 0                                  ;; Columna del primer corazon (ocupan 3 columnas)
+DEF HUD_HEARTS_COL EQU 0                                  ;; Columna de la primera bateria (vida) (ocupan 3 columnas)
 DEF HUD_SCORE_COL  EQU SCREEN_TILES_W - 1 - SCORE_DIGITS  ;; Columna de la primera cifra (la ultima queda junto al marco derecho)
 DEF HUD_TIME_COL   EQU 11                                 ;; Columna de la primera cifra del tiempo que queda de la fase (2 cifras: 60 -> 00)
 DEF HUD_COMBO_COL  EQU 8                                  ;; Columna de la "X" del multiplicador (la cifra va en la siguiente)

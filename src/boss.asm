@@ -254,7 +254,7 @@ Boss_Spawner:
 ;;-----------------------------------------------------------------
 ;; Boss_SpawnOne: Suelta una celula por debajo del cuerpo del jefe (si no se ha llegado al maximo de celulas de la etapa).
 ;;    Etapa 1: zigzag y normales. Etapas 2 y 3: normales, zigzag, agresivas y divisoras a partes iguales (respetando los maximos de
-;;    cada tipo: si no caben, sale una normal).
+;;    cada tipo: si no caben, sale una normal). Salen hacia abajo o, si el jugador no esta debajo del jefe, hacia su lado.
 ;;    Destruye: A, BC, DE, HL
 Boss_SpawnOne:
    call Enemies_Count
@@ -318,6 +318,61 @@ Boss_SpawnOne:
    add  a
    add  a
    ld   e, a                    ;; E = 8 * tamaño
+   ld   a, DIR_DOWN
+   ld   [wPlaceDir], a          ;; Por defecto la celula baja
+   ;;-- Si el jugador esta a un lado del jefe (su centro fuera de la anchura del jefe), la celula sale por ese lado, a la altura
+   ;;   del jugador (sin salirse de la altura del jefe): asi se interpone en sus disparos horizontales
+   ld   a, [wPlayerX]
+   add  TILE_SIZE / 2
+   ld   b, a                    ;; B = centro X del jugador
+   ld   a, [wBossX]
+   cp   b
+   jr   z, .notLeft
+   jr   c, .notLeft             ;; El jefe esta a la izquierda del jugador
+   ld   a, DIR_LEFT
+   ld   [wPlaceDir], a
+   ld   a, [wBossX]
+   sub  e
+   add  4
+   ld   b, a                    ;; X: pegada al lado izquierdo del jefe, solapada 4 pixeles con el
+   jr   .sideY
+.notLeft:
+   ld   a, [wBossX]
+   add  BOSS_PIX
+   cp   b
+   jr   nc, .below              ;; El jugador no esta a la derecha del jefe: esta debajo
+   ld   a, DIR_RIGHT
+   ld   [wPlaceDir], a
+   ld   a, [wBossX]
+   add  BOSS_PIX - 4
+   ld   b, a                    ;; X: pegada al lado derecho del jefe
+.sideY:
+   ld   a, e
+   srl  a
+   ld   d, a                    ;; D = mitad del tamaño de la celula
+   ld   a, [wPlayerY]
+   add  TILE_SIZE / 2
+   sub  d
+   ld   d, a                    ;; D = Y que centra la celula con la nave
+   ld   a, [wBossYb]
+   sub  BOSS_YBIAS
+   ld   c, a                    ;; C = Y mas alta posible (parte alta del jefe)
+   ld   a, d
+   cp   c
+   jr   nc, .minOk
+   ld   d, c
+.minOk:
+   ld   a, c
+   add  BOSS_PIX
+   sub  e                       ;; A = Y mas baja posible (parte baja del jefe)
+   cp   d
+   jr   nc, .maxOk
+   ld   d, a
+.maxOk:
+   ld   c, d
+   pop  af
+   jp   Enemies_Place
+.below:
    ld   a, BOSS_PIX + 1
    sub  e
    ld   b, a                    ;; B = cuantas X distintas caben bajo el jefe
@@ -332,7 +387,7 @@ Boss_SpawnOne:
    sub  e
    ld   c, a                    ;; C = Y: la celula asoma por la parte de abajo del jefe
    pop  af
-   jp   Enemies_PlaceDown
+   jp   Enemies_Place
 
 ;;-----------------------------------------------------------------
 ;; Boss_RandomExplosion: Una explosion en un punto al azar del cuerpo del jefe

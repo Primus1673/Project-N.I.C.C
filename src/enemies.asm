@@ -30,6 +30,7 @@ wMoveShift:    db                            ;; Patron de movimiento de la celul
 wBigPercent:   db                            ;; Probabilidad (0-100) de que una aparicion sea una celula grande
 wMoveShiftBig: db                            ;; Patron de movimiento de la celula grande
 wDivPercent:   db                            ;; Probabilidad (0-100) de que una aparicion sea una celula divisora
+wPlaceDir::    db                            ;; Enemies_Place: direccion de la celula que se crea
 wMoveShiftSplit: db                          ;; Patron de movimiento de las celulas hijas (fijo: ver SPLIT_PATTERN)
 wSplitDir:     db                            ;; Enemies_Split: direccion del padre
 wSplitX:       db                            ;; ... centro del padre (donde nacen las hijas)
@@ -457,10 +458,10 @@ Enemies_Spawn:
    ret
 
 ;;-----------------------------------------------------------------
-;; Enemies_PlaceDown: Crea una celula ya en juego (sin aviso) que baja desde la posicion dada: la usa el jefe (boss.asm)
-;;    Entrada: A = tipo (normal, zigzag, agresiva o divisora), B = X, C = Y     Si no hay hueco libre, no hace nada
+;; Enemies_Place: Crea una celula ya en juego (sin aviso) en la posicion dada y yendo en la direccion wPlaceDir: la usa el jefe (boss.asm)
+;;    Entrada: A = tipo (normal, zigzag, agresiva o divisora), B = X, C = Y, [wPlaceDir] = DIR_*     Si no hay hueco libre, no hace nada
 ;;    Destruye: A, D, E, HL
-Enemies_PlaceDown::
+Enemies_Place::
    ld   d, a                    ;; D = tipo
    ld   hl, wEnemies
    ld   e, MAX_ENEMIES
@@ -477,6 +478,8 @@ Enemies_PlaceDown::
 .free:
    ld   a, d
    ld   [hl+], a                ;; Tipo
+   ld   a, [wPlaceDir]
+   ld   e, a                    ;; E = direccion
    ld   a, d
    cp   ENEMY_ZIGZAG
    jr   nz, .dir
@@ -484,10 +487,10 @@ Enemies_PlaceDown::
    call Random_Next
    pop  hl
    and  %11111000
-   or   DIR_DOWN
+   or   e
    jr   .storeDir
 .dir:
-   ld   a, DIR_DOWN
+   ld   a, e
 .storeDir:
    ld   [hl+], a                ;; Direccion
    ld   a, b
