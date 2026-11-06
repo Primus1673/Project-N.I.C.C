@@ -24,7 +24,7 @@
 ;; FASE 4: vidas, invulnerabilidad, puntuacion y HUD; fin de partida y reinicio con START.
 ;; FASE 5: la partida se divide en fases (niveles) de 1 minuto con dificultad creciente y pantalla de "FASE N" entre ellas.
 ;; FASE 6: combo de bajas con multiplicador.
-;; FASE 7: pantalla de puntuacion final con bonus por fases superadas y corazones que quedan.
+;; FASE 7: pantalla de puntuacion final con bonus por fases superadas y baterias (vidas) que quedan.
 ;; FASE 8-9: celula grande y celula agresiva.
 ;; FASE 10: pantalla de titulo (START empieza; tras la puntuacion final START vuelve al titulo).
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
@@ -81,6 +81,7 @@ main::
    ;;-- Inicializar los modulos del juego
    call Sprites_Init
    call Input_Init
+   call Music_Init
    call Random_Init
    call Title_Begin          ;; Pantalla de titulo (la partida empieza al pulsar START: Game_Start)
    call Hud_Update           ;; Dibuja el HUD ahora (LCD apagada: se puede escribir en VRAM)
@@ -109,4 +110,5 @@ main::
    call Input_Read           ;; Leer el mando
    call Game_Update          ;; Estado de la partida: fases, jugador, balas, enemigos, choques y vidas
    call Game_Draw            ;; Escribir todos los sprites en la OAM en sombra
+   call Music_Frame          ;; Musica: elegir cancion segun el estado y avanzar un fotograma
    jr   .mainLoop

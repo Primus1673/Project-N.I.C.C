@@ -385,3 +385,11 @@ DEF BOSS_SPAWN_S2     EQU 110
 DEF BOSS_SPAWN_S3     EQU 80
 DEF BOSS_SPAWN_VAR    EQU 30
 DEF BOSS_STAGE_PAUSE  EQU 90                ;; Al cambiar de etapa: las celulas explotan y no suelta ninguna durante este tiempo
+
+;;--------------------------------------
+;;-- Musica (hUGEDriver, ver music.asm): numero de cancion segun el momento del juego
+DEF MUSIC_TITLE    EQU 0     ;; Titulo, puntuaciones, nombre y puntuacion final
+DEF MUSIC_GAME     EQU 1     ;; Fases 1 a PHASE_COUNT
+DEF MUSIC_BOSS     EQU 2     ;; Fase del jefe
+DEF MUSIC_VICTORY  EQU 3     ;; Pantalla de victoria
+DEF MUSIC_NONE     EQU $FF   ;; Silencio (fin de partida por perder)
