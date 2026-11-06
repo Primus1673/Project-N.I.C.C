@@ -50,7 +50,7 @@ SECTION "Header", ROM0[$100]
    ;;    If title is less than 11 bytes, 00's should be added as padding.
    ;;    Older cartridges used 16 bytes, and no manufacturer code was present
    ;;  0123456789A (Max 11 bytes, from 0 to A in Hex)
-   db "Your Game"       ;; String constants do not end in 0
+   db "N.I.C.C"         ;; Nombre del juego (Project N.I.C.C): el titulo admite 11 bytes como maximo
    ds $013F - @, 0      ;; Pad Title with 0's up to $013E
 
    ;;--------------------------------------
@@ -60,9 +60,9 @@ SECTION "Header", ROM0[$100]
 
    ;;--------------------------------------
    ;;-- CGB Flag (Color GameBoy)
-   ;;    $0 (CGB but Backwards compatible)
+   ;;    $80 (CGB but Backwards compatible)
    ;;    $C0 (CGB Only)
-   db $0   ;; Compatible
+   db $80   ;; Compatible
 
    ;;--------------------------------------
    ;;-- New licensee code ($0144-$0145, 2 bytes)

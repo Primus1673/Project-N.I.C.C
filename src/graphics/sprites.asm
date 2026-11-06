@@ -1,28 +1,24 @@
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 ;; sprites.asm : OAM en sombra (shadow OAM), transferencia por DMA y datos de los tiles
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
-;; El juego NO escribe directamente en la OAM real ($FE00). Escribe en una copia en RAM (wShadowOAM) y,
-;; una vez por fotograma al empezar el VBlank, se copia entera a la OAM mediante DMA (rutina en HRAM).
-;;-------------------------------------------------------------------------------------------------------------------------------;;
 
 INCLUDE "core/constants.inc"
 
 ;;-----------------------------------------------------------------
-;; Copia de la OAM en RAM. Debe estar alineada a 256 bytes: el DMA solo recibe el byte alto de la direccion.
+;; Copia de la OAM en RAM
 SECTION "Shadow OAM", WRAM0, ALIGN[8]
 wShadowOAM:: ds OAM_SIZE
 
 SECTION "Sprites", ROM0
 
 ;;-----------------------------------------------------------------
-;; Rutina de DMA. Durante la transferencia la CPU solo puede acceder a HRAM, asi que la rutina
-;; se guarda en ROM y se copia a HRAM al arrancar (Sprites_InitDMA). Se ejecuta con "call hOAMDMA".
+;; Rutina de DMA. Durante la transferencia la CPU solo puede acceder a HRAM
 OAMDMA_Source:
 LOAD "HRAM OAM DMA", HRAM
 hOAMDMA::
    ld   a, HIGH(wShadowOAM)
    ldh  [rDMA], a
-   ld   a, 40                ;; El DMA tarda 160 ciclos de maquina; 40 vueltas de (dec + jr) = 160
+   ld   a, 40
 .wait:
    dec  a
    jr   nz, .wait
@@ -31,8 +27,7 @@ hOAMDMA::
 ENDL
 
 ;;-----------------------------------------------------------------
-;; Sprites_Init: Copia la rutina de DMA a HRAM y deja la OAM en sombra vacia (sprites fuera de pantalla)
-;;    Destruye: A, BC, DE, HL
+;; Sprites_Init: Copia la rutina de DMA a HRAM y deja la OAM en sombra vacia
 Sprites_Init::
    ;; Copiamos la rutina de DMA de ROM a HRAM
    ld   de, OAMDMA_Source
@@ -43,8 +38,7 @@ Sprites_Init::
    ;; (sigue en Sprites_Clear)
 
 ;;-----------------------------------------------------------------
-;; Sprites_Clear: Deja la OAM en sombra vacia (todos los sprites ocultos: con Y=0 quedan fuera de la pantalla)
-;;    Destruye: A, BC, D, HL
+;; Sprites_Clear: Deja la OAM en sombra vacia
 Sprites_Clear::
    ld   hl, wShadowOAM
    ld   bc, OAM_SIZE
@@ -52,25 +46,7 @@ Sprites_Clear::
    jp   MemSet
 
 ;;-----------------------------------------------------------------
-;; Sprites_LoadTiles: Copia todos los tiles del juego a la VRAM (sprites y fondo comparten los tiles de $8000):
-;;    - src/sprites/dron.z80  -> a partir del tile TILE_PLAYER (nave)
-;;    - src/sprites/borde.z80 -> a partir del tile TILE_BORDER (marco de la pantalla)
-;;    - src/sprites/bala.z80  -> a partir del tile TILE_BULLET (balas)
-;;    - src/sprites/celula.z80 -> a partir del tile TILE_ENEMY1 (celula infectada)
-;;    - src/sprites/hud.z80   -> a partir del tile TILE_HUD (digitos 0-9, bateria llena, bateria vacia y X del combo)
-;;    - src/sprites/font.z80  -> a partir del tile TILE_FONT (fuente para texto con sprites: digitos 0-9 y letras A-Z)
-;;    - src/sprites/celula_grande.z80 -> a partir del tile TILE_BIG3 (celula grande: 9 tiles a 3x3 y 4 tiles a 2x2)
-;;    - src/sprites/celula_agresiva.z80 -> a partir del tile TILE_AGGR2 (celula agresiva: 4 tiles a 2x2 y 1 tile a 1x1)
-;;    - src/sprites/titulo.z80 -> a partir del tile TILE_TITLE (letras grandes de la pantalla de titulo)
-;;    - src/sprites/explosion.z80 -> a partir del tile TILE_EXPL (3 dibujos de la explosion de una celula)
-;;    - src/sprites/aviso.z80 -> a partir del tile TILE_WARN (4 flechas del aviso de entrada de las celulas)
-;;    - src/sprites/energia.z80 -> a partir del tile TILE_MISSILE_V (misiles, gota y barra de energia: 12 tiles)
-;;    - src/sprites/virus.z80 -> a partir del tile TILE_VIRUS (virus grande del fondo del titulo: 36 tiles a 6x6)
-;;    - src/sprites/bateria.z80 -> a partir del tile TILE_HEART_DROP (bateria que sueltan las celulas y da 1 vida: 1 tile)
-;;    - src/sprites/escudo.z80 -> a partir del tile TILE_SHIELD (anillo del escudo: 4 tiles a 2x2)
-;;    El tile 0 (TILE_BLANK) no se copia: ya esta vacio porque main.asm borra la VRAM al arrancar.
-;;    IMPORTANTE: solo llamar con la LCD apagada o durante el VBlank
-;;    Destruye: A, BC, DE, HL
+;; Sprites_LoadTiles: Copia todos los tiles del juego a la VRAM
 Sprites_LoadTiles::
    ld   de, TileLabel
    ld   hl, _VRAM + TILE_PLAYER * TILE_BYTES
@@ -164,11 +140,7 @@ Sprites_LoadTiles::
    ret
 
 ;;-----------------------------------------------------------------
-;; Datos de los tiles, exportados desde Game Boy Tile Designer (GBTD).
-;; Flujo de trabajo: editar el .gbr en GBTD -> File > Export to... -> el .z80 en src/sprites/ -> make clean && make
-;; (make clean es necesario porque el Makefile no sabe que sprites.asm depende de estos archivos)
-;; Cada archivo exportado define su propia SECTION y su etiqueta, y debe ir con su etiqueta ".end" justo detras.
-;; Las SECTION y las etiquetas de cada archivo deben tener nombres distintos (se configuran al exportar en GBTD).
+;; Datos de los tiles, exportados desde Game Boy Tile Designer (GBTD)
 INCLUDE "sprites/dron.z80"
 TileLabel.end:
 

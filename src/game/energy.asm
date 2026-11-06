@@ -1,35 +1,23 @@
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 ;; energy.asm : Energia celular: gotas que sueltan las celulas, barra de energia y modo misiles
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
-;;   - Al morir una celula, con probabilidad DROP_PERCENT suelta una gota de energia y, si falta alguna vida, con probabilidad
-;;     HEART_PERCENT un corazon que da 1 vida al recogerlo (Drop_Roll). La gota cae despacio hacia abajo y
-;;     desaparece al llegar al marco inferior. Si el jugador la toca, la barra sube ENERGY_PER_DROP pixeles (maximo ENERGY_MAX).
-;;   - Con la barra llena, SELECT activa el ESCUDO (wShield = 1): mientras dura no se pierde ninguna vida y las celulas que tocan la
-;;     nave explotan y dan sus puntos como una baja mas (Enemies_ShieldHit). Se dibuja como un anillo alrededor de la nave (Shield_Draw), que parpadea
-;;     al final. La barra baja 1 pixel cada ENERGY_DRAIN_FRAMES fotogramas; al llegar a 0 el escudo se desactiva.
-;;     (Se pueden seguir recogiendo gotas con el modo activo: alargan el tiempo.)
-;;   - La barra se dibuja en el HUD (hud.asm). Con la barra llena y sin activar, parpadea para avisar de que SELECT esta listo.
-;;   - Solo avanza mientras se juega (Game_Update); la pausa y las pantallas de fase la congelan.
-;;   - Cada gota: [activa (0 = hueco libre), X, Y], esquina superior izquierda del sprite.
-;;-------------------------------------------------------------------------------------------------------------------------------;;
 
 INCLUDE "core/constants.inc"
 
 SECTION "Energy Variables", WRAM0
 
-wEnergy::      db                  ;; Energia: 0 a ENERGY_MAX (pixeles de la barra)
-wShield:: db                  ;; 1 = escudo activo
-wEnergyDrain:  db                  ;; Fotogramas que faltan para bajar 1 pixel la barra
-wEnergyBlink:: db                  ;; Contador del parpadeo de "barra llena" (el bit 4 decide si se ve)
-wDropTick:     db                  ;; Cuenta fotogramas para que las gotas caigan despacio
-wDropLeft:     db                  ;; Drops_Draw: gotas que faltan por mirar
+wEnergy::      db
+wShield:: db
+wEnergyDrain:  db
+wEnergyBlink:: db
+wDropTick:     db
+wDropLeft:     db
 wDrops:        ds DROP_SIZE * MAX_DROPS
 
 SECTION "Energy", ROM0
 
 ;;-----------------------------------------------------------------
 ;; Energy_Init: Barra vacia y modo misiles desactivado (al empezar una partida)
-;;    Destruye: A, BC, HL
 Energy_Init::
    xor  a
    ld   [wEnergy], a
@@ -41,7 +29,6 @@ Energy_Init::
 
 ;;-----------------------------------------------------------------
 ;; Drops_Init: Quita todas las gotas (al empezar cada fase)
-;;    Destruye: A, BC, HL
 Drops_Init::
    ld   hl, wDrops
    ld   bc, DROP_SIZE * MAX_DROPS
@@ -50,7 +37,6 @@ Drops_Init::
 
 ;;-----------------------------------------------------------------
 ;; Energy_Add: Suma ENERGY_PER_DROP a la barra (con tope)
-;;    Destruye: A
 Energy_Add:
    ld   a, [wEnergy]
    add  ENERGY_PER_DROP
@@ -64,18 +50,17 @@ Energy_Add:
    ret
 
 ;;-----------------------------------------------------------------
-;; Energy_Update: Un fotograma: SELECT activa el modo misiles si la barra esta llena; con el modo activo la barra se vacia
-;;    Destruye: A
+;; Energy_Update: Un fotograma: SELECT activa el modo misiles si la barra esta llena
 Energy_Update::
    ldh  a, [hInputNew]
    bit  BTNB_SELECT, a
    jr   z, .noSelect
    ld   a, [wShield]
    and  a
-   jr   nz, .noSelect           ;; Ya esta activo
+   jr   nz, .noSelect
    ld   a, [wEnergy]
    cp   ENERGY_MAX
-   jr   nz, .noSelect           ;; La barra no esta llena
+   jr   nz, .noSelect
    ld   a, 1
    ld   [wShield], a
    ld   [wHudDirty], a
@@ -88,15 +73,15 @@ Energy_Update::
    ld   a, [wEnergy]
    and  a
    jr   nz, .shieldOn
-   xor  a                       ;; La barra se ha vaciado (p. ej. con un disparo cargado): se acaba el escudo
+   xor  a
    ld   [wShield], a
    inc  a
    ld   [wHudDirty], a
    ret
 .shieldOn:
-   ld   hl, wEnergyBlink        ;; (el escudo parpadea al acabarse con este contador, Shield_Draw)
+   ld   hl, wEnergyBlink
    inc  [hl]
-   ld   a, [wEnergyDrain]       ;; Modo activo: la barra baja 1 pixel cada ENERGY_DRAIN_FRAMES
+   ld   a, [wEnergyDrain]
    dec  a
    ld   [wEnergyDrain], a
    ret  nz
@@ -109,13 +94,13 @@ Energy_Update::
    ld   [wEnergy], a
    ret  nz
    xor  a
-   ld   [wShield], a       ;; Barra vacia: se acabo el escudo
+   ld   [wShield], a
    ret
 .idle:
    ld   a, [wEnergy]
    cp   ENERGY_MAX
    ret  nz
-   ld   a, [wEnergyBlink]       ;; Barra llena sin activar: parpadea (cambia cada 16 fotogramas)
+   ld   a, [wEnergyBlink]
    inc  a
    ld   [wEnergyBlink], a
    and  %00001111
@@ -125,47 +110,44 @@ Energy_Update::
    ret
 
 ;;-----------------------------------------------------------------
-;; Shield_Draw: Dibuja el anillo del escudo alrededor de la nave (4 sprites de 8x8, centrado en ella). Cuando a la barra le
-;;    quedan SHIELD_WARN_PX pixeles o menos, parpadea (se ve solo con el bit 2 de wEnergyBlink a 1)
-;;    Entrada: DE = siguiente sprite libre     Salida: DE avanza     Destruye: A, BC, HL
+;; Shield_Draw: Dibuja el anillo del escudo alrededor de la nave (4 sprites de 8x8, centrado en ella)
 Shield_Draw::
    ld   a, [wShield]
    and  a
-   ret  z                       ;; Sin escudo
+   ret  z
    ld   a, [wEnergy]
    cp   SHIELD_WARN_PX + 1
    jr   nc, .visible
    ld   a, [wEnergyBlink]
    bit  2, a
-   ret  z                       ;; Parte oculta del parpadeo
+   ret  z
 .visible:
    ld   a, [wPlayerX]
    sub  TILE_SIZE / 2
-   ld   b, a                    ;; B = X de la esquina de arriba a la izquierda del anillo
+   ld   b, a
    ld   a, [wPlayerY]
    sub  TILE_SIZE / 2
-   ld   c, a                    ;; C = Y
+   ld   c, a
    ld   a, TILE_SHIELD
-   call Put_Sprite              ;; Arriba a la izquierda
+   call Put_Sprite
    ld   a, b
    add  TILE_SIZE
    ld   b, a
    ld   a, TILE_SHIELD + 1
-   call Put_Sprite              ;; Arriba a la derecha
+   call Put_Sprite
    ld   a, c
    add  TILE_SIZE
    ld   c, a
    ld   a, TILE_SHIELD + 3
-   call Put_Sprite              ;; Abajo a la derecha
+   call Put_Sprite
    ld   a, b
    sub  TILE_SIZE
    ld   b, a
    ld   a, TILE_SHIELD + 2
-   jp   Put_Sprite              ;; Abajo a la izquierda
+   jp   Put_Sprite
 
 ;;-----------------------------------------------------------------
-;; Life_Add: Recoge un corazon: +1 vida (como mucho PLAYER_LIVES)
-;;    Destruye: A
+;; Life_Add: Recoge una bateria de vida: +1 vida (como mucho PLAYER_LIVES)
 Life_Add:
    ld   a, [wLives]
    cp   PLAYER_LIVES
@@ -178,12 +160,11 @@ Life_Add:
 
 ;;-----------------------------------------------------------------
 ;; Drop_Spawn: Crea una gota en un hueco libre (si lo hay)
-;;    Entrada: B = X, C = Y     Conserva todos los registros
 Drop_Spawn:
    push af
    push de
    push hl
-   ld   e, a                    ;; E = tipo de gota
+   ld   e, a
    ld   hl, wDrops
    ld   d, MAX_DROPS
 .find:
@@ -195,7 +176,7 @@ Drop_Spawn:
    inc  hl
    dec  d
    jr   nz, .find
-   jr   .end                    ;; Sin hueco
+   jr   .end
 .free:
    ld   a, e
    ld   [hl+], a
@@ -211,8 +192,6 @@ Drop_Spawn:
 
 ;;-----------------------------------------------------------------
 ;; Drop_Roll: Tira los dados: con probabilidad DROP_PERCENT crea una gota donde ha muerto una celula
-;;    Entrada: B = X, C = Y (esquina superior izquierda de un sprite de 8x8 centrado en la celula)
-;;    Conserva todos los registros
 Drop_Roll::
    push af
    push bc
@@ -220,14 +199,14 @@ Drop_Roll::
    push hl
    push bc
    ld   b, 100
-   call Random_Range            ;; A = 0..99 (conserva C, DE y HL)
+   call Random_Range
    pop  bc
    cp   DROP_PERCENT
    jr   nc, .noEnergy
    ld   a, DROP_ENERGY
    call Drop_Spawn
    jr   .none
-.noEnergy:                      ;; Tirada [DROP_PERCENT, DROP_PERCENT + HEART_PERCENT): corazon, pero solo si falta alguna vida
+.noEnergy:
    cp   DROP_PERCENT + HEART_PERCENT
    jr   nc, .none
    ld   a, [wLives]
@@ -244,7 +223,6 @@ Drop_Roll::
 
 ;;-----------------------------------------------------------------
 ;; Drops_Update: Un fotograma: las gotas caen y se recogen al tocar al jugador
-;;    Destruye: A, BC, DE, HL
 Drops_Update::
    ld   a, [wDropTick]
    inc  a
@@ -253,7 +231,7 @@ Drops_Update::
    xor  a
 .store:
    ld   [wDropTick], a
-   ld   c, a                    ;; C = 0 cuando toca mover las gotas
+   ld   c, a
    ld   hl, wDrops
    ld   b, MAX_DROPS
 .loop:
@@ -264,36 +242,35 @@ Drops_Update::
    and  a
    jr   nz, .noMove
    inc  hl
-   inc  hl                      ;; HL -> Y
+   inc  hl
    ld   a, [hl]
    inc  a
    ld   [hl-], a
-   dec  hl                      ;; HL -> activa
+   dec  hl
    cp   PLAY_MAX_Y + 1
    jr   c, .noMove
    xor  a
-   ld   [hl], a                 ;; Ha llegado al marco inferior: desaparece
+   ld   [hl], a
    jr   .next
 .noMove:
-   ;; --- Choque con el jugador: |dx| y |dy| <= DROP_REACH ---
-   inc  hl                      ;; HL -> X
+   inc  hl
    ld   a, [wPlayerX]
    sub  [hl]
    add  DROP_REACH
    cp   2 * DROP_REACH + 1
    jr   nc, .miss
-   inc  hl                      ;; HL -> Y
+   inc  hl
    ld   a, [wPlayerY]
    sub  [hl]
    add  DROP_REACH
    cp   2 * DROP_REACH + 1
    dec  hl
    jr   nc, .miss
-   dec  hl                      ;; HL -> tipo
+   dec  hl
    ld   a, [hl]
-   ld   d, a                    ;; D = tipo
+   ld   d, a
    xor  a
-   ld   [hl], a                 ;; Recogida
+   ld   [hl], a
    push bc
    push hl
    ld   a, d
@@ -308,7 +285,7 @@ Drops_Update::
    pop  bc
    jr   .next
 .miss:
-   dec  hl                      ;; HL -> activa
+   dec  hl
 .next:
    inc  hl
    inc  hl
@@ -319,7 +296,6 @@ Drops_Update::
 
 ;;-----------------------------------------------------------------
 ;; Drops_Draw: Escribe las gotas en la OAM en sombra
-;;    Entrada: DE = siguiente sprite libre     Salida: DE avanza     Destruye: A, BC, HL
 Drops_Draw::
    ld   hl, wDrops
    ld   a, MAX_DROPS
@@ -328,14 +304,14 @@ Drops_Draw::
    ld   a, [hl+]
    and  a
    jr   z, .skip
-   push af                      ;; (tipo: DE es el destino en la OAM y no se puede tocar)
+   push af
    ld   a, [hl+]
    ld   b, a
    ld   a, [hl+]
    ld   c, a
    pop  af
    cp   DROP_HEART
-   ld   a, TILE_DROP            ;; (ld no toca los flags)
+   ld   a, TILE_DROP
    jr   nz, .putDrop
    ld   a, TILE_HEART_DROP
 .putDrop:

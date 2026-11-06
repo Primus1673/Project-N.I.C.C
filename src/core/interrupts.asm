@@ -6,10 +6,10 @@ INCLUDE "core/constants.inc"
 
 SECTION "HRAM Interrupts", HRAM
 
-hVBlankFlag:: db     ;; La interrupcion de VBlank lo pone a 1 en cada fotograma
+hVBlankFlag:: db
 
 ;;-----------------------------------------------------------------
-;; Vector de la interrupcion de VBlank ($0040). Solo hay 8 bytes de espacio, asi que saltamos a la rutina.
+;; Vector de la interrupcion de VBlank ($0040)
 SECTION "VBlank Vector", ROM0[$0040]
    jp   VBlankHandler
 
@@ -26,15 +26,13 @@ VBlankHandler:
 
 ;;-----------------------------------------------------------------
 ;; WaitVBlank: Duerme la CPU (halt) hasta que empiece el siguiente VBlank
-;;    Requiere interrupciones activadas (ei) y IE con VBlank habilitado
-;;    Destruye: A
 WaitVBlank::
 .wait:
    halt
-   nop                       ;; Tras un halt conviene un nop (evita el "halt bug")
+   nop
    ldh  a, [hVBlankFlag]
    and  a
-   jr   z, .wait             ;; Si nos desperto otra cosa, seguimos esperando
+   jr   z, .wait
    xor  a
    ldh  [hVBlankFlag], a
    ret

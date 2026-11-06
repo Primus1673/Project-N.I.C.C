@@ -1,25 +1,18 @@
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 ;; explosions.asm : Explosion al destruir una celula
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
-;; Cuando una bala remata a una celula (que en ese momento es siempre de 1x1), aparece en su sitio una explosion de 1 sprite que
-;; dura EXPL_FRAMES fotogramas y pasa por 3 dibujos (src/sprites/explosion.z80). Hay como mucho MAX_EXPLOSIONS a la vez; si no
-;; hay hueco libre, la explosion simplemente no sale.
-;; Cada explosion: [fotogramas que le quedan (0 = hueco libre), X, Y]. Se dibuja justo despues de los enemigos, en los sprites
-;; que sobren (si la OAM esta llena, no se dibuja: los enemigos tienen prioridad).
-;;-------------------------------------------------------------------------------------------------------------------------------;;
 
 INCLUDE "core/constants.inc"
 
 SECTION "Explosions Variables", WRAM0
 
 wExplosions: ds EXPL_SIZE * MAX_EXPLOSIONS
-wExploLeft:  db           ;; Explo_Draw: explosiones que faltan por mirar
+wExploLeft:  db
 
 SECTION "Explosions", ROM0
 
 ;;-----------------------------------------------------------------
 ;; Explo_Init: Quita todas las explosiones
-;;    Destruye: A, BC, HL
 Explo_Init::
    ld   hl, wExplosions
    ld   bc, EXPL_SIZE * MAX_EXPLOSIONS
@@ -28,8 +21,6 @@ Explo_Init::
 
 ;;-----------------------------------------------------------------
 ;; Explo_Spawn: Crea una explosion en un hueco libre (si lo hay)
-;;    Entrada: B = X, C = Y (esquina superior izquierda del sprite)
-;;    Conserva todos los registros
 Explo_Spawn::
    push af
    push de
@@ -45,7 +36,7 @@ Explo_Spawn::
    inc  hl
    dec  d
    jr   nz, .find
-   jr   .end                 ;; Sin hueco
+   jr   .end
 .free:
    ld   a, EXPL_FRAMES
    ld   [hl+], a
@@ -61,7 +52,6 @@ Explo_Spawn::
 
 ;;-----------------------------------------------------------------
 ;; Explo_Update: Un fotograma: a cada explosion le queda uno menos
-;;    Destruye: A, B, HL
 Explo_Update::
    ld   hl, wExplosions
    ld   b, MAX_EXPLOSIONS
@@ -79,9 +69,7 @@ Explo_Update::
    ret
 
 ;;-----------------------------------------------------------------
-;; Explo_Draw: Escribe las explosiones en la OAM en sombra y oculta los sprites que sobren hasta el final de la OAM
-;;    Entrada: DE = siguiente sprite libre de la OAM en sombra (lo deja Enemies_Draw)
-;;    Destruye: A, BC, DE, HL
+;; Explo_Draw: Escribe las explosiones en la OAM en sombra
 Explo_Draw::
    call Warn_Draw
    call Drops_Draw
@@ -89,22 +77,22 @@ Explo_Draw::
    ld   a, MAX_EXPLOSIONS
    ld   [wExploLeft], a
 .loop:
-   ld   a, [hl+]             ;; Fotogramas que le quedan
+   ld   a, [hl+]
    and  a
    jr   z, .skip
    ld   c, a
    ld   a, EXPL_FRAMES
-   sub  c                    ;; Fotogramas que lleva (0 a EXPL_FRAMES-1)
+   sub  c
    srl  a
-   srl  a                    ;; Cada dibujo dura 4 fotogramas
+   srl  a
    add  TILE_EXPL
    push af
    ld   a, [hl+]
-   ld   b, a                 ;; B = X
+   ld   b, a
    ld   a, [hl+]
-   ld   c, a                 ;; C = Y
+   ld   c, a
    pop  af
-   call Put_Sprite           ;; (si la OAM esta llena no escribe nada)
+   call Put_Sprite
    jr   .next
 .skip:
    inc  hl
@@ -114,7 +102,7 @@ Explo_Draw::
    dec  a
    ld   [wExploLeft], a
    jr   nz, .loop
-.hide:                       ;; Oculta los sprites que no se han usado
+.hide:
    ld   a, e
    cp   OAM_SIZE
    ret  nc
@@ -124,24 +112,22 @@ Explo_Draw::
    jr   .hide
 
 ;;-----------------------------------------------------------------
-;; Warn_Draw: Dibuja la flecha del aviso de entrada (si hay una celula avisada y toca verse): pegada al marco por dentro, en el punto por el
-;;    que va a entrar y apuntando hacia dentro (sobre el fondo claro se ve mejor que sobre el marco). Se dibuja antes que las explosiones.
-;;    Entrada: DE = siguiente sprite libre     Salida: DE avanza     Destruye: A, BC, HL
+;; Warn_Draw: Dibuja la flecha del aviso de entrada
 Warn_Draw:
    ld   a, [wWarnTimer]
    and  a
-   ret  z                       ;; Ninguna avisada
+   ret  z
    bit  WARN_BLINK_BIT, a
-   ret  z                       ;; Parte oculta del parpadeo
+   ret  z
    ld   a, [wWarnHp]
    dec  a
    add  a
    add  a
    add  a
-   srl  a                       ;; 4 * (tamaño - 1): desplazamiento hasta el centro de la celula (menos medio sprite)
-   ld   l, a                    ;; L = desplazamiento
+   srl  a
+   ld   l, a
    ld   a, [wWarnDir]
-   ld   h, a                    ;; H = direccion de entrada
+   ld   h, a
    ld   a, [wWarnX]
    ld   b, a
    ld   a, [wWarnY]
@@ -151,29 +137,28 @@ Warn_Draw:
    jr   z, .fromLeft
    cp   DIR_LEFT
    jr   z, .fromRight
-   ;; Entra por arriba o por abajo: la flecha va en X = centro de la celula
    ld   a, b
    add  l
    ld   b, a
-   ld   c, PLAY_MIN_Y           ;; Borde superior de la zona de juego
+   ld   c, PLAY_MIN_Y
    ld   a, h
    cp   DIR_DOWN
    jr   z, .draw
-   ld   c, PLAY_MAX_Y           ;; Borde inferior
+   ld   c, PLAY_MAX_Y
    jr   .draw
 .fromLeft:
    ld   a, c
    add  l
    ld   c, a
-   ld   b, PLAY_MIN_X           ;; Borde izquierdo
+   ld   b, PLAY_MIN_X
    jr   .draw
 .fromRight:
    ld   a, c
    add  l
    ld   c, a
-   ld   b, PLAY_MAX_X           ;; Borde derecho
+   ld   b, PLAY_MAX_X
 .draw:
    ld   a, h
    dec  a
-   add  TILE_WARN               ;; DIR_UP=1, DOWN=2, LEFT=3, RIGHT=4 -> tiles en ese orden
+   add  TILE_WARN
    jp   Put_Sprite

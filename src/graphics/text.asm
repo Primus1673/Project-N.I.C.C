@@ -1,14 +1,11 @@
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 ;; text.asm : Texto en pantalla, dibujado con sprites (fuente de src/sprites/font.z80: digitos 0-9 y letras A-Z)
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
-;; Cada caracter es un sprite de 8x8 con la paleta OBP1 (blanca): se usa sobre pantallas de fondo negro.
-;; Con 40 sprites en total y 10 por linea, el texto debe ser corto (maximo 10 caracteres por linea).
-;;-------------------------------------------------------------------------------------------------------------------------------;;
 
 INCLUDE "core/constants.inc"
 
 ;;--------------------------------------
-;;-- Mapa de caracteres: en los "db" de abajo, cada letra/digito se convierte en el indice de su tile de la fuente
+;; -- Mapa de caracteres: en los "db" de abajo
 NEWCHARMAP texto
 SETCHARMAP texto
 CHARMAP " ", TILE_BLANK
@@ -25,23 +22,23 @@ ENDR
 
 SECTION "Text Variables", WRAM0
 
-wTextDark:: db        ;; 0 = texto blanco (paleta OBP1, para pantallas negras); 1 = texto negro (paleta OBP0, sobre el juego: pausa)
+wTextDark:: db
 
 SECTION "Text", ROM0
 
 ;;--------------------------------------
-;;-- Cadenas (terminan en TEXT_END; el espacio es el tile 0, que no se dibuja)
+;; -- Cadenas (terminan en TEXT_END; el espacio es el tile 0, que no se dibuja)
 StrPhase:: db "FASE ", TEXT_END
-StrBoss::  db "FASE X", TEXT_END
+StrBoss::  db "JEFE", TEXT_END
 StrPaused:: db "PAUSA", TEXT_END
-StrWin::     db "VICTORIA", TEXT_END      ;; Pantalla de puntuacion (se dibujan en el fondo, ver results.asm)
+StrWin::     db "VICTORIA", TEXT_END
 StrLose::    db "GAME OVER", TEXT_END
 StrPoints::  db "PUNTOS", TEXT_END
 StrPhases::  db "FASES", TEXT_END
 StrHearts::  db "BATERIAS", TEXT_END
 StrTotal::   db "TOTAL", TEXT_END
 StrPress::   db "PULSA START", TEXT_END
-StrInfection:: db "INFECCION", TEXT_END      ;; Pantalla de victoria
+StrInfection:: db "INFECCION", TEXT_END
 StrEradicated:: db "ERRADICADA", TEXT_END
 StrRecord::  db "RECORD", TEXT_END
 StrNewRecord:: db "NUEVO RECORD", TEXT_END
@@ -50,48 +47,40 @@ StrName::    db "NOMBRE", TEXT_END
 StrPlay::    db "JUGAR", TEXT_END
 StrScores::  db "PUNTUACIONES", TEXT_END
 
-
 ;;-----------------------------------------------------------------
 ;; Text_DrawChar: Escribe 1 caracter como sprite en la OAM en sombra
-;;    Entrada: A = tile del caracter, B = X en pantalla, C = Y en pantalla (esquina superior izquierda),
-;;             DE = direccion de la OAM en sombra donde escribir
-;;    Salida: DE avanza al siguiente sprite. B y C no cambian.
-;;    Destruye: A
 Text_DrawChar::
    push af
    ld   a, c
    add  OAM_Y_OFFSET
-   ld   [de], a              ;; Byte 0: Y
+   ld   [de], a
    inc  de
    ld   a, b
    add  OAM_X_OFFSET
-   ld   [de], a              ;; Byte 1: X
+   ld   [de], a
    inc  de
    pop  af
-   ld   [de], a              ;; Byte 2: tile
+   ld   [de], a
    inc  de
    ld   a, [wTextDark]
    and  a
-   ld   a, TEXT_ATTR         ;; (ld no toca los flags)
+   ld   a, TEXT_ATTR
    jr   z, .attr
-   xor  a                    ;; Texto negro: paleta OBP0
+   xor  a
 .attr:
-   ld   [de], a              ;; Byte 3: atributos (paleta OBP1 o OBP0)
+   ld   [de], a
    inc  de
    ret
 
 ;;-----------------------------------------------------------------
 ;; Text_DrawString: Escribe una cadena, un sprite por caracter (los espacios solo avanzan)
-;;    Entrada: HL = cadena (acabada en TEXT_END), B = X del primer caracter, C = Y, DE = destino en la OAM en sombra
-;;    Salida: B = X donde iria el siguiente caracter, DE avanza
-;;    Destruye: A, HL
 Text_DrawString::
 .loop:
    ld   a, [hl+]
    cp   TEXT_END
    ret  z
    and  a
-   jr   z, .skip             ;; Espacio: no gasta sprite
+   jr   z, .skip
    call Text_DrawChar
 .skip:
    ld   a, b

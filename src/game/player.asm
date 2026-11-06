@@ -6,14 +6,13 @@ INCLUDE "core/constants.inc"
 
 SECTION "Player Variables", WRAM0
 
-wPlayerX:: db        ;; Posicion X en pantalla (esquina superior izquierda del sprite, 0..159)
-wPlayerY:: db        ;; Posicion Y en pantalla (esquina superior izquierda del sprite, 0..143)
+wPlayerX:: db
+wPlayerY:: db
 
 SECTION "Player", ROM0
 
 ;;-----------------------------------------------------------------
 ;; Player_Init: Coloca al jugador en el centro de la pantalla
-;;    Destruye: A
 Player_Init::
    ld   a, PLAYER_START_X
    ld   [wPlayerX], a
@@ -23,20 +22,19 @@ Player_Init::
 
 ;;-----------------------------------------------------------------
 ;; Player_Update: Mueve al jugador segun la cruceta, sin dejar que salga de los limites de la pantalla
-;;    Destruye: A, B
 Player_Update::
    ldh  a, [hInput]
    ld   b, a
 
    ;;--------------------------------------
-   ;;-- Eje horizontal
+;; -- Eje horizontal
    bit  BTNB_RIGHT, b
    jr   z, .noRight
    ld   a, [wPlayerX]
    add  PLAYER_SPEED
    cp   PLAYER_MAX_X + 1
-   jr   c, .storeRight       ;; Si X <= maximo, valido
-   ld   a, PLAYER_MAX_X      ;; Si no, lo dejamos en el borde derecho
+   jr   c, .storeRight
+   ld   a, PLAYER_MAX_X
 .storeRight:
    ld   [wPlayerX], a
 .noRight:
@@ -45,17 +43,17 @@ Player_Update::
    jr   z, .noLeft
    ld   a, [wPlayerX]
    sub  PLAYER_SPEED
-   jr   c, .clampLeft        ;; Si ha dado la vuelta por debajo de 0
+   jr   c, .clampLeft
    cp   PLAYER_MIN_X
-   jr   nc, .storeLeft       ;; Si X >= minimo, valido
+   jr   nc, .storeLeft
 .clampLeft:
-   ld   a, PLAYER_MIN_X      ;; Si no, lo dejamos en el borde izquierdo
+   ld   a, PLAYER_MIN_X
 .storeLeft:
    ld   [wPlayerX], a
 .noLeft:
 
    ;;--------------------------------------
-   ;;-- Eje vertical
+;; -- Eje vertical
    bit  BTNB_DOWN, b
    jr   z, .noDown
    ld   a, [wPlayerY]
@@ -83,37 +81,32 @@ Player_Update::
 
 ;;-----------------------------------------------------------------
 ;; Player_Draw: Escribe el sprite del jugador en la OAM en sombra (sprite numero 0)
-;;    El DMA lo copiara a la OAM real en el proximo VBlank
-;;    - Con la partida perdida la nave desaparece.
-;;    - Durante la invulnerabilidad parpadea (oculta mientras el bit BLINK_MASK de wInvuln vale 1).
-;;    - Mientras se carga el disparo parpadea (oculta con wChargeHide = 1).
-;;    Destruye: A, HL
 Player_Draw::
    ld   a, [wGameState]
    cp   STATE_GAMEOVER
-   jr   z, .hide             ;; Partida perdida
+   jr   z, .hide
    ld   a, [wInvuln]
    and  BLINK_MASK
-   jr   nz, .hide            ;; Fase "apagada" del parpadeo
+   jr   nz, .hide
    ld   a, [wChargeHide]
    and  a
-   jr   nz, .hide            ;; Parpadeo de la carga del disparo (bullets.asm)
+   jr   nz, .hide
    ld   hl, wShadowOAM
    ld   a, [wPlayerY]
    add  OAM_Y_OFFSET
-   ld   [hl+], a             ;; Byte 0: Y
+   ld   [hl+], a
    ld   a, [wPlayerX]
    add  OAM_X_OFFSET
-   ld   [hl+], a             ;; Byte 1: X
+   ld   [hl+], a
    ld   a, TILE_PLAYER
-   ld   [hl+], a             ;; Byte 2: numero de tile
+   ld   [hl+], a
    xor  a
-   ld   [hl], a              ;; Byte 3: atributos (paleta OBP0, sin volteos, delante del fondo)
+   ld   [hl], a
    ret
 .hide:
    ld   hl, wShadowOAM
    xor  a
-   ld   [hl+], a             ;; Y = 0: sprite oculto
+   ld   [hl+], a
    ld   [hl+], a
    ld   [hl+], a
    ld   [hl], a

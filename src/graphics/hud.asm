@@ -1,19 +1,13 @@
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 ;; hud.asm : HUD (vidas y puntuacion) dibujado con tiles del fondo en la fila superior del marco
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
-;; Corazones a la izquierda (uno por vida posible: llenos = vidas que quedan), la barra de energia, el multiplicador de combo ("X3"), el cronometro de la fase
-;; y 5 cifras de puntuacion a la derecha.
-;; Solo se escribe en la VRAM cuando algo ha cambiado (wHudDirty), y siempre al empezar el VBlank (o con la LCD apagada).
-;;-------------------------------------------------------------------------------------------------------------------------------;;
 
 INCLUDE "core/constants.inc"
 
 SECTION "HUD", ROM0
 
 ;;-----------------------------------------------------------------
-;; Hud_Update: Si hace falta, redibuja corazones y puntuacion
-;;    IMPORTANTE: solo llamar con la LCD apagada o al principio del VBlank
-;;    Destruye: A, B, C, DE, HL
+;; Hud_Update: Si hace falta, redibuja baterias y puntuacion
 Hud_Update::
    ld   a, [wHudDirty]
    and  a
@@ -22,7 +16,7 @@ Hud_Update::
    ld   [wHudDirty], a
 
    ;;--------------------------------------
-   ;;-- Corazones: PLAYER_LIVES huecos; los primeros "wLives" llenos, el resto vacios
+;; -- Baterias (vidas): PLAYER_LIVES huecos; los primeros "wLives" llenos, el resto vacios
    ld   hl, _SCRN0 + HUD_HEARTS_COL
    ld   a, [wLives]
    ld   c, a
@@ -30,7 +24,7 @@ Hud_Update::
 .heart:
    ld   a, c
    and  a
-   ld   a, TILE_HEART_EMPTY  ;; (ld no toca los flags: seguimos con el resultado de "and a")
+   ld   a, TILE_HEART_EMPTY
    jr   z, .putHeart
    dec  c
    ld   a, TILE_HEART_FULL
@@ -40,8 +34,7 @@ Hud_Update::
    jr   nz, .heart
 
    ;;--------------------------------------
-   ;;-- Barra de energia: HUD_BAR_TILES tiles; cada uno muestra 0 a 8 pixeles rellenos (tiles TILE_BAR + n).
-   ;;   Llena y sin activar, parpadea (se ve cuando el bit 4 de wEnergyBlink vale 1).
+;; -- Barra de energia: HUD_BAR_TILES tiles; cada uno muestra 0 a 8 pixeles rellenos
    ld   hl, _SCRN0 + HUD_BAR_COL
    ld   a, [wShield]
    and  a
@@ -52,11 +45,11 @@ Hud_Update::
    ld   a, [wEnergyBlink]
    bit  4, a
    jr   nz, .barShow
-   ld   c, 0                    ;; Fase oculta del parpadeo: barra vacia
+   ld   c, 0
    jr   .barDraw
 .barShow:
    ld   a, [wEnergy]
-   ld   c, a                    ;; C = pixeles que quedan por dibujar
+   ld   c, a
 .barDraw:
    ld   b, HUD_BAR_TILES
 .bar:
@@ -65,10 +58,10 @@ Hud_Update::
    jr   c, .part
    sub  TILE_SIZE
    ld   c, a
-   ld   a, TILE_SIZE            ;; Tile lleno
+   ld   a, TILE_SIZE
    jr   .putBar
 .part:
-   ld   c, 0                    ;; A = pixeles de este tile (menos de 8)
+   ld   c, 0
 .putBar:
    add  TILE_BAR
    ld   [hl+], a
@@ -76,7 +69,7 @@ Hud_Update::
    jr   nz, .bar
 
    ;;--------------------------------------
-   ;;-- Multiplicador de combo ("X3"): solo con x2 o mas y en la fase visible del parpadeo; si no, se restaura el marco
+;; -- Multiplicador de combo: solo con x2 o mas y en la fase visible del parpadeo
    ld   hl, _SCRN0 + HUD_COMBO_COL
    ld   a, [wMult]
    cp   2
@@ -97,16 +90,15 @@ Hud_Update::
 .comboDone:
 
    ;;--------------------------------------
-   ;;-- Cronometro de la fase: segundos que quedan, 2 cifras. Con TIME_BLINK_SEC o menos solo se ve la primera mitad de cada segundo.
+;; -- Cronometro de la fase: segundos que quedan, 2 cifras
    ld   hl, _SCRN0 + HUD_TIME_COL
    ld   a, [wPhase]
    cp   BOSS_PHASE
    jr   nz, .clock
-   ;;-- Fase del jefe: su vida como barra de 2 tiles (16 pixeles, redondeando hacia arriba)
    ld   a, [wBossHp]
    add  a
    add  a
-   add  a                       ;; 8 * vida (maximo 240)
+   add  a
    add  14
    ld   b, 0
 .hpDiv:
@@ -115,7 +107,7 @@ Hud_Update::
    sub  15
    inc  b
    jr   .hpDiv
-.hpDone:                        ;; B = pixeles de barra (0 a 16)
+.hpDone:
    ld   a, b
    cp   TILE_SIZE
    jr   c, .hpFirst
@@ -141,7 +133,7 @@ Hud_Update::
    jr   c, .timeHide
 .timeShow:
    ld   a, [wPhaseSec]
-   ld   b, 0                    ;; B = decenas
+   ld   b, 0
 .tens:
    cp   10
    jr   c, .tensDone
@@ -149,7 +141,7 @@ Hud_Update::
    inc  b
    jr   .tens
 .tensDone:
-   ld   c, a                    ;; C = unidades
+   ld   c, a
    ld   a, b
    add  TILE_DIGIT0
    ld   [hl+], a
@@ -164,7 +156,7 @@ Hud_Update::
 .timeDone:
 
    ;;--------------------------------------
-   ;;-- Puntuacion: una cifra por tile
+;; -- Puntuacion: una cifra por tile
    ld   hl, _SCRN0 + HUD_SCORE_COL
    ld   de, wScore
    ld   b, SCORE_DIGITS
