@@ -6,7 +6,7 @@
 ;; fondo no consume sprites, que quedan libres para el jugador, los enemigos y los disparos.
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
-INCLUDE "constants.inc"
+INCLUDE "core/constants.inc"
 
 SECTION "Border", ROM0
 

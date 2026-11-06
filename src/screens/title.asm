@@ -13,7 +13,7 @@
 ;; Para volver al menu desde los resultados se reinicia el juego entero (results.asm salta a "main").
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
-INCLUDE "constants.inc"
+INCLUDE "core/constants.inc"
 
 DEF TITLE_DOT EQU 9          ;; En las palabras del titulo, el indice del punto (las letras son 0-8: P,R,O,J,E,C,T,N,I)
 

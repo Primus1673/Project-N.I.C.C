@@ -7,7 +7,7 @@
 ;; Las canciones estan en src/music/ (song_*.asm). Para cambiar una, basta apuntar su entrada de SongTable a otro descriptor.
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
-INCLUDE "constants.inc"
+INCLUDE "core/constants.inc"
 INCLUDE "music/song_lengths.inc"   ;; MUSIC_VICTORY_FRAMES
 
 EXPORT hUGE_init, hUGE_dosound

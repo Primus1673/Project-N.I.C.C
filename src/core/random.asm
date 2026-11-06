@@ -6,7 +6,7 @@
 ;; no es la misma en cada partida: depende de CUANDO se pide cada numero.
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
-INCLUDE "constants.inc"
+INCLUDE "core/constants.inc"
 
 SECTION "Random Variables", WRAM0
 

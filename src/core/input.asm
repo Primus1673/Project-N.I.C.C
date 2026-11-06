@@ -2,7 +2,7 @@
 ;; input.asm : Lectura del mando (cruceta y botones)
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
-INCLUDE "constants.inc"
+INCLUDE "core/constants.inc"
 
 SECTION "HRAM Input", HRAM
 

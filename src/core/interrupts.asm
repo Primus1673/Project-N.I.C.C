@@ -2,7 +2,7 @@
 ;; interrupts.asm : Interrupcion de VBlank y espera al siguiente fotograma
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
-INCLUDE "constants.inc"
+INCLUDE "core/constants.inc"
 
 SECTION "HRAM Interrupts", HRAM
 

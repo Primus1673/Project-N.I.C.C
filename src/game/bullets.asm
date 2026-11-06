@@ -18,7 +18,7 @@
 ;;   - Hay un conjunto fijo de MAX_BULLETS balas. Cada una es [direccion, X, Y]; direccion 0 = hueco libre.
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
-INCLUDE "constants.inc"
+INCLUDE "core/constants.inc"
 
 SECTION "Bullets Variables", WRAM0
 

@@ -1,5 +1,5 @@
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
-;; constants.inc : Constantes comunes del juego (se incluye desde cada .asm con INCLUDE "constants.inc")
+;; constants.inc : Constantes comunes del juego (se incluye desde cada .asm con INCLUDE "core/constants.inc")
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
 IF !DEF(CONSTANTS_INC)

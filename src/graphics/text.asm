@@ -5,7 +5,7 @@
 ;; Con 40 sprites en total y 10 por linea, el texto debe ser corto (maximo 10 caracteres por linea).
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
-INCLUDE "constants.inc"
+INCLUDE "core/constants.inc"
 
 ;;--------------------------------------
 ;;-- Mapa de caracteres: en los "db" de abajo, cada letra/digito se convierte en el indice de su tile de la fuente

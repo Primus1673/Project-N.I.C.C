@@ -16,7 +16,7 @@
 ;;     ver PhaseTable.
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
-INCLUDE "constants.inc"
+INCLUDE "core/constants.inc"
 
 SECTION "Enemies Variables", WRAM0
 

@@ -11,7 +11,7 @@
 ;; Las puntuaciones son el TOTAL de la pantalla de resultados (puntos + bonus de fases y corazones).
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
-INCLUDE "constants.inc"
+INCLUDE "core/constants.inc"
 
 DEF SAVE_MAGIC0  EQU $4E
 DEF SAVE_MAGIC1  EQU $54

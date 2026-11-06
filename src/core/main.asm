@@ -29,7 +29,7 @@
 ;; FASE 10: pantalla de titulo (START empieza; tras la puntuacion final START vuelve al titulo).
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
-INCLUDE "constants.inc"
+INCLUDE "core/constants.inc"
 
 DEF STACK_TOP EQU $E000      ;; La pila crece hacia abajo desde el final de la WRAM ($DFFF)
 

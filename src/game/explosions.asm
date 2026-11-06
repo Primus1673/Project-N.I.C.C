@@ -8,7 +8,7 @@
 ;; que sobren (si la OAM esta llena, no se dibuja: los enemigos tienen prioridad).
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
-INCLUDE "constants.inc"
+INCLUDE "core/constants.inc"
 
 SECTION "Explosions Variables", WRAM0
 

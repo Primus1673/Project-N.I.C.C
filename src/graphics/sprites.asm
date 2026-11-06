@@ -5,7 +5,7 @@
 ;; una vez por fotograma al empezar el VBlank, se copia entera a la OAM mediante DMA (rutina en HRAM).
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
-INCLUDE "constants.inc"
+INCLUDE "core/constants.inc"
 
 ;;-----------------------------------------------------------------
 ;; Copia de la OAM en RAM. Debe estar alineada a 256 bytes: el DMA solo recibe el byte alto de la direccion.

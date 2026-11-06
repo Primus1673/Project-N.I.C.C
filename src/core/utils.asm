@@ -2,7 +2,7 @@
 ;; utils.asm : Rutinas de utilidad generales (copiar y rellenar memoria)
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
-INCLUDE "constants.inc"
+INCLUDE "core/constants.inc"
 
 SECTION "Utils", ROM0
 

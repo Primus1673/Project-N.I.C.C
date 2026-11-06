@@ -2,7 +2,7 @@
 ;; player.asm : El jugador (nanomaquina N.I.C.C): posicion, movimiento y dibujado
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
-INCLUDE "constants.inc"
+INCLUDE "core/constants.inc"
 
 SECTION "Player Variables", WRAM0
 

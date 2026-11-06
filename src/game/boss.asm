@@ -11,7 +11,7 @@
 ;;   - La coordenada Y se guarda con un sesgo de BOSS_YBIAS (para poder salir desde arriba de la pantalla con numeros sin signo).
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
-INCLUDE "constants.inc"
+INCLUDE "core/constants.inc"
 
 SECTION "Boss Variables", WRAM0
 

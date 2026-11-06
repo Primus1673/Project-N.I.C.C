@@ -11,7 +11,7 @@
 ;;     con un semiperiodo proporcional al tiempo que queda (T/8, minimo COMBO_BLINK_MIN): cada vez mas rapido hasta 0.
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
-INCLUDE "constants.inc"
+INCLUDE "core/constants.inc"
 
 SECTION "Combo Variables", WRAM0
 

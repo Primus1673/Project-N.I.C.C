@@ -13,7 +13,7 @@
 ;;   - Cada gota: [activa (0 = hueco libre), X, Y], esquina superior izquierda del sprite.
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
-INCLUDE "constants.inc"
+INCLUDE "core/constants.inc"
 
 SECTION "Energy Variables", WRAM0
 

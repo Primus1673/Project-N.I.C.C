@@ -17,7 +17,7 @@
 ;; Los numeros son listas de 5 cifras decimales (una por byte, la mas significativa primero), como wScore.
 ;;-------------------------------------------------------------------------------------------------------------------------------;;
 
-INCLUDE "constants.inc"
+INCLUDE "core/constants.inc"
 
 DEF RES_STAGE_CLEAR  EQU 0   ;; Borra las filas que se van a usar (por si quedaba texto de una partida anterior)
 DEF RES_STAGE_TITLE  EQU 1
